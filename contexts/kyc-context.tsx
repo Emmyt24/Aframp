@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
+import { createContext, useContext, ReactNode, useState, useEffect, useCallback } from 'react'
 import type { KycStatus } from '@/types/kyc'
+import { useNotifications } from '@/contexts/notification-context'
 
 interface KycContextType {
   kycStatus: KycStatus | null
@@ -27,6 +28,18 @@ export function KycProvider({ children }: KycProviderProps) {
   const [submissionId, setSubmissionIdState] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // useNotifications may not be available at the very top of the tree, so
+  // we guard against it being undefined during SSR or if the provider order
+  // is wrong. The notification-context has its own guard error.
+  let notifPush: ReturnType<typeof useNotifications>['push'] | null = null
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { push } = useNotifications()
+    notifPush = push
+  } catch {
+    // NotificationProvider not yet mounted — skip notifications
+  }
+
   // Restore from localStorage on mount
   useEffect(() => {
     const storedStatus = localStorage.getItem(KYC_STORAGE_KEY) as KycStatus | null
@@ -42,10 +55,33 @@ export function KycProvider({ children }: KycProviderProps) {
     localStorage.setItem(SUBMISSION_STORAGE_KEY, id)
   }
 
-  const updateKycStatus = (status: KycStatus) => {
-    setKycStatus(status)
-    localStorage.setItem(KYC_STORAGE_KEY, status)
-  }
+  const updateKycStatus = useCallback(
+    (status: KycStatus) => {
+      setKycStatus((prev) => {
+        if (prev !== status && notifPush) {
+          const messages: Record<KycStatus, { title: string; message: string } | undefined> = {
+            submitted: { title: 'KYC submitted',    message: 'Your documents have been submitted for review.' },
+            pending:   { title: 'KYC under review', message: 'Your KYC submission is being reviewed.' },
+            approved:  { title: 'KYC approved ✓',   message: 'Your identity is verified. You can now trade.' },
+            rejected:  { title: 'KYC rejected',     message: 'Your KYC was not approved. Please resubmit.' },
+            expired:   { title: 'KYC expired',      message: 'Your KYC verification has expired. Please resubmit.' },
+          }
+          const copy = messages[status]
+          if (copy) {
+            void notifPush({
+              ...copy,
+              category: 'kyc',
+              priority: status === 'approved' || status === 'rejected' ? 'high' : 'normal',
+              metadata: { status },
+            })
+          }
+        }
+        return status
+      })
+      localStorage.setItem(KYC_STORAGE_KEY, status)
+    },
+    [notifPush]
+  )
 
   const clearKyc = () => {
     setKycStatus(null)
