@@ -104,6 +104,14 @@ export function OnrampPageClient() {
   }
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+
+  // Show the confirmation summary first; the order is only created after
+  // the user explicitly confirms in the dialog.
+  const handleInitialSubmit = () => {
+    if (!form.isValid || isSubmitting) return
+    setShowConfirmDialog(true)
+  }
 
   const handleSubmit = async () => {
     // For demo purposes, auto-connect a mock wallet if none exists
@@ -164,6 +172,8 @@ export function OnrampPageClient() {
 
       localStorage.setItem(ORDER_KEY, JSON.stringify(order))
       localStorage.setItem(`onramp:order:${order.id}`, JSON.stringify(order))
+
+      setShowConfirmDialog(false)
 
       // Follow correct workflow: Calculator → Payment Instructions → Processing → Success
       router.push(`/onramp/payment?order=${order.id}`)
@@ -255,7 +265,7 @@ export function OnrampPageClient() {
             onFiatChange={(value) => form.setFiatCurrency(value as FiatCurrency)}
             onCryptoChange={(value) => form.setCryptoAsset(value as CryptoAsset)}
             onPaymentChange={form.setPaymentMethod}
-            onSubmit={handleSubmit}
+            onSubmit={handleInitialSubmit}
             onCopyWallet={handleCopy}
             onChangeWallet={updateAddress}
             onSetDefaultWallet={setDefaultAddress}
@@ -372,6 +382,83 @@ export function OnrampPageClient() {
 
           {/* Test Utils - Remove in production */}
           <OnrampTestUtils />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm your order</DialogTitle>
+            <DialogDescription>
+              Review the details below. Your order will only be created after you confirm.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">You are paying</span>
+              <span className="font-medium">
+                {formatCurrency(form.fees.totalCost, form.state.fiatCurrency)}
+              </span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">You will receive</span>
+              <span className="font-medium text-primary">
+                {form.cryptoAmount} {form.state.cryptoAsset}
+              </span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Exchange rate</span>
+              <div className="text-right">
+                <div className="font-medium">
+                  1 {form.state.cryptoAsset} ={' '}
+                  {formatCurrency(data?.rate || 0, form.state.fiatCurrency)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {countdown > 0 ? `Rate updates in ${countdown}s` : 'Refreshing rate…'}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Processing fee</span>
+              <span className="font-medium">{processingFeeLabel}</span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Network fee</span>
+              <span className="font-medium">
+                {formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}
+              </span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Destination address</span>
+              <span className="max-w-[200px] break-all text-right text-xs font-medium">
+                {address || 'Connect wallet'}
+              </span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-sm text-muted-foreground">Estimated completion</span>
+              <span className="font-medium">A few seconds</span>
+            </div>
+          </div>
+
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Processing…' : 'Confirm and Pay'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -14,6 +14,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/calculations'
 import { formatUsd, formatRateCountdown } from '@/lib/offramp/formatters'
 import type { OfframpOrder } from '@/types/offramp'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 const ORDER_KEY = 'offramp:latest-order'
 const LOCK_KEY = 'offramp:rate-lock'
@@ -85,6 +93,14 @@ export function OfframpPageClient() {
   }, [form.amountValue, selectedAsset.asset])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+
+  // Show the confirmation summary first; the order is only created after
+  // the user explicitly confirms in the dialog.
+  const handleInitialSubmit = () => {
+    if (!form.isValid || isSubmitting) return
+    setShowConfirmDialog(true)
+  }
 
   const handleSubmit = async () => {
     if (!form.isValid || isSubmitting) return
@@ -123,6 +139,9 @@ export function OfframpPageClient() {
 
       localStorage.setItem(ORDER_KEY, JSON.stringify(order))
       localStorage.setItem(`offramp:order:${order.id}`, JSON.stringify(order))
+
+      setShowConfirmDialog(false)
+
       router.push(`/offramp/bank-details?order=${order.id}`)
     } catch (err) {
       console.error('Offramp order creation failed:', err)
@@ -209,7 +228,7 @@ export function OfframpPageClient() {
             onMax={form.setMaxAmount}
             onFiatChange={form.setFiatCurrency}
             onRefreshRate={refresh}
-            onSubmit={handleSubmit}
+            onSubmit={handleInitialSubmit}
           />
 
           <div className="space-y-6">
@@ -256,6 +275,80 @@ export function OfframpPageClient() {
           </div>
         </div>
       </main>
+
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm your withdrawal</DialogTitle>
+            <DialogDescription>
+              Review the details below. Your order will only be created after you confirm.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">You are selling</span>
+              <span className="font-medium">
+                {form.state.amountInput || '0'} {selectedAsset.asset}
+              </span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">You will receive</span>
+              <span className="font-medium text-primary">
+                {formatCurrency(form.fees.receiveAmount, form.state.fiatCurrency)}
+              </span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Exchange rate</span>
+              <div className="text-right">
+                <div className="font-medium">
+                  1 {selectedAsset.asset} = {formatCurrency(rate || 0, form.state.fiatCurrency)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Rate lock:{' '}
+                  {lockCountdown !== null
+                    ? formatRateCountdown(lockCountdown)
+                    : '15:00 on submit'}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Network fee</span>
+              <span className="font-medium">
+                {formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}
+              </span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Destination bank account</span>
+              <span className="max-w-[200px] text-right text-xs font-medium">
+                Entered on the next step
+              </span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-sm text-muted-foreground">Estimated completion</span>
+              <span className="font-medium">1–3 business days</span>
+            </div>
+          </div>
+
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Processing…' : 'Confirm and Pay'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
