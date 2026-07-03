@@ -14,6 +14,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/calculations'
 import { formatUsd, formatRateCountdown } from '@/lib/offramp/formatters'
 import type { OfframpOrder } from '@/types/offramp'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 const ORDER_KEY = 'offramp:latest-order'
 const LOCK_KEY = 'offramp:rate-lock'
@@ -84,7 +92,13 @@ export function OfframpPageClient() {
     return form.amountValue > 0 ? form.amountValue * usdRate : 0
   }, [form.amountValue, selectedAsset.asset])
 
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleInitialSubmit = () => {
+    if (!form.isValid || isSubmitting) return
+    setShowConfirmDialog(true)
+  }
 
   const handleSubmit = async () => {
     if (!form.isValid || isSubmitting) return
@@ -209,7 +223,7 @@ export function OfframpPageClient() {
             onMax={form.setMaxAmount}
             onFiatChange={form.setFiatCurrency}
             onRefreshRate={refresh}
-            onSubmit={handleSubmit}
+            onSubmit={handleInitialSubmit}
           />
 
           <div className="space-y-6">
@@ -256,6 +270,63 @@ export function OfframpPageClient() {
           </div>
         </div>
       </main>
+
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Order</DialogTitle>
+            <DialogDescription>
+              Please review the details of your transaction before submitting.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">You are selling</span>
+              <span className="font-medium">{form.state.amountInput || '0'} {selectedAsset.asset}</span>
+            </div>
+            
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">You will receive</span>
+              <span className="font-medium text-primary">{formatCurrency(form.fees.receiveAmount, form.state.fiatCurrency)}</span>
+            </div>
+            
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">Exchange Rate</span>
+              <div className="text-right">
+                <div className="font-medium">1 {selectedAsset.asset} = {formatCurrency(rate || 0, form.state.fiatCurrency)}</div>
+                <div className="text-xs text-muted-foreground">
+                  Lock: {lockCountdown !== null ? formatRateCountdown(lockCountdown) : '15:00 on submit'}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">Network Fee</span>
+              <span className="font-medium">{formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}</span>
+            </div>
+
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">Destination Bank</span>
+              <span className="font-medium text-xs">To be provided next</span>
+            </div>
+
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">Estimated Time</span>
+              <span className="font-medium">1-3 Business Days</span>
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end mt-4">
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Processing...' : 'Confirm and Pay'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

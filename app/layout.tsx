@@ -57,6 +57,7 @@ export default function RootLayout({
             </NotificationProvider>
           </KycProvider>
         </ThemeProvider>
+        <CookieConsentBanner />
         <Analytics />
       </body>
     </html>

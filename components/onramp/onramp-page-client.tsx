@@ -24,6 +24,13 @@ import { formatCurrency, isValidStellarAddress } from '@/lib/calculations'
 import type { OnrampOrder } from '@/types/onramp'
 import { Button } from '@/components/ui/button' // Added missing import for Button
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  getAppliedReferralCode,
+  isReferralDiscountConsumed,
+  calcReferralDiscount,
+  markReferralDiscountConsumed,
+  setAppliedReferralCode,
+} from '@/lib/referral'
 
 const ORDER_KEY = 'onramp:latest-order'
 
@@ -74,6 +81,15 @@ export function OnrampPageClient() {
     router.prefetch('/onramp/payment')
   }, [router])
 
+  // Process referral code from URL query param (e.g. /onramp?ref=AFR-ABCD-1234)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const refCode = params.get('ref')
+    if (refCode && !getAppliedReferralCode() && !isReferralDiscountConsumed()) {
+      setAppliedReferralCode(refCode.toUpperCase())
+    }
+  }, [])
+
   // Only show modal if definitely not connected after loading
   useEffect(() => {
     if (!loading && !walletConnected) {
@@ -103,7 +119,13 @@ export function OnrampPageClient() {
     }
   }
 
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleInitialSubmit = () => {
+    if (!form.isValid || isSubmitting) return
+    setShowConfirmDialog(true)
+  }
 
   const handleSubmit = async () => {
     // For demo purposes, auto-connect a mock wallet if none exists
@@ -143,6 +165,7 @@ export function OnrampPageClient() {
         cryptoAmount: form.cryptoAmount,
         fees: discountedFees,
         walletAddress: walletAddress,
+        referralCode: hasDiscount ? referralCode : undefined,
       }
 
       const response = await fetch('/api/onramp/create-order', {
@@ -255,7 +278,7 @@ export function OnrampPageClient() {
             onFiatChange={(value) => form.setFiatCurrency(value as FiatCurrency)}
             onCryptoChange={(value) => form.setCryptoAsset(value as CryptoAsset)}
             onPaymentChange={form.setPaymentMethod}
-            onSubmit={handleSubmit}
+            onSubmit={handleInitialSubmit}
             onCopyWallet={handleCopy}
             onChangeWallet={updateAddress}
             onSetDefaultWallet={setDefaultAddress}
@@ -372,6 +395,61 @@ export function OnrampPageClient() {
 
           {/* Test Utils - Remove in production */}
           <OnrampTestUtils />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Order</DialogTitle>
+            <DialogDescription>
+              Please review the details of your transaction before submitting.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">You are paying</span>
+              <span className="font-medium">{formatCurrency(form.fees.totalCost, form.state.fiatCurrency)}</span>
+            </div>
+            
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">You will receive</span>
+              <span className="font-medium text-primary">{form.cryptoAmount} {form.state.cryptoAsset}</span>
+            </div>
+            
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">Exchange Rate</span>
+              <div className="text-right">
+                <div className="font-medium">1 {form.state.cryptoAsset} = {formatCurrency(data?.rate || 0, form.state.fiatCurrency)}</div>
+                <div className="text-xs text-muted-foreground">Updates in {countdown}s</div>
+              </div>
+            </div>
+            
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">Network Fee</span>
+              <span className="font-medium">{formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}</span>
+            </div>
+
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">Destination Address</span>
+              <span className="font-medium text-xs break-all text-right max-w-[200px]">{address}</span>
+            </div>
+
+            <div className="flex justify-between border-b pb-2">
+              <span className="text-sm text-muted-foreground">Estimated Time</span>
+              <span className="font-medium">Seconds</span>
+            </div>
+          </div>
+          
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end mt-4">
+            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? 'Processing...' : 'Confirm and Pay'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,4 +1,5 @@
 import withPWAInit from 'next-pwa'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const withPWA = withPWAInit({
   dest: 'public',
@@ -18,14 +19,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    // Allow optimized images for Lighthouse Best Practices score
     unoptimized: false,
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60,
   },
-  // Enable standalone output for Docker deployments
   output: 'standalone',
-  // Security headers — improves Best Practices score
   async headers() {
     return [
       {
@@ -42,4 +40,4 @@ const nextConfig = {
   },
 }
 
-export default withPWA(nextConfig)
+export default withSentryConfig(withPWA(nextConfig))

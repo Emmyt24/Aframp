@@ -68,6 +68,10 @@ export function useOrderTracking(orderId: string | null) {
       if (!orderId) return
 
       try {
+        // Read current order from localStorage for fee calculation
+        const storedData = localStorage.getItem(`onramp:order:${orderId}`)
+        const storedOrder: OnrampOrder | null = storedData ? JSON.parse(storedData) : null
+
         // Optimistically update local state
         setOrder((prevOrder) => {
           if (!prevOrder) return null
@@ -77,12 +81,17 @@ export function useOrderTracking(orderId: string | null) {
         })
 
         // Notify backend
+        const referralTotalFees =
+          additionalData?.referralCode && storedOrder?.fees?.totalFees
+            ? storedOrder.fees.totalFees
+            : undefined
+
         await fetch(`/api/onramp/order/${orderId}/status`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ status, additionalData }),
+          body: JSON.stringify({ status, additionalData, referralTotalFees }),
         })
       } catch (err) {
         console.error('Failed to update order status on backend:', err)

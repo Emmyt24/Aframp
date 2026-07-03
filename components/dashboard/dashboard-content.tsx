@@ -48,7 +48,7 @@ export function DashboardContent({ walletName, walletAddress }: DashboardContent
   return (
     <div className="space-y-6">
       {/* Wallet Info Header */}
-      <WalletInfo walletName={walletName} walletAddress={walletAddress} />
+      <WalletInfo walletName={walletName} walletAddress={walletAddress} loading={loading} />
 
       {/* Total Balance */}
       {totalUsdValue > 0 && (
@@ -67,7 +67,7 @@ export function DashboardContent({ walletName, walletAddress }: DashboardContent
       {/* Balance Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {balances.map((balance) => (
-          <BalanceCard key={balance.symbol} balance={balance} />
+          <BalanceCard key={balance.symbol} balance={balance} loading={loading} />
         ))}
       </div>
 
@@ -86,7 +86,7 @@ export function DashboardContent({ walletName, walletAddress }: DashboardContent
       />
 
       {/* Transaction History */}
-      <TransactionHistory />
+      <TransactionHistory loading={loading} />
 
       {/* Modals */}
       <SwapModal
