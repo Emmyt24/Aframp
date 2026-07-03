@@ -35,6 +35,39 @@ jobs:
       - name: TypeScript Check
         run: npm run type-check
 
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Snyk Security Scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run OWASP scan
+        run: bash scripts/owasp-scan.sh
+        continue-on-error: true
+
+      - name: Run wallet deps audit
+        run: bash scripts/audit-wallet-deps.sh
+        continue-on-error: true
+
   test:
     name: Tests & Coverage
     runs-on: ubuntu-latest

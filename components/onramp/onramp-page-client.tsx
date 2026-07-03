@@ -24,6 +24,13 @@ import { formatCurrency, isValidStellarAddress } from '@/lib/calculations'
 import type { OnrampOrder } from '@/types/onramp'
 import { Button } from '@/components/ui/button' // Added missing import for Button
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  getAppliedReferralCode,
+  isReferralDiscountConsumed,
+  calcReferralDiscount,
+  markReferralDiscountConsumed,
+  setAppliedReferralCode,
+} from '@/lib/referral'
 
 const ORDER_KEY = 'onramp:latest-order'
 
@@ -74,6 +81,15 @@ export function OnrampPageClient() {
     router.prefetch('/onramp/payment')
   }, [router])
 
+  // Process referral code from URL query param (e.g. /onramp?ref=AFR-ABCD-1234)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const refCode = params.get('ref')
+    if (refCode && !getAppliedReferralCode() && !isReferralDiscountConsumed()) {
+      setAppliedReferralCode(refCode.toUpperCase())
+    }
+  }, [])
+
   // Only show modal if definitely not connected after loading
   useEffect(() => {
     if (!loading && !walletConnected) {
@@ -103,11 +119,17 @@ export function OnrampPageClient() {
     }
   }
 
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   // Show the confirmation summary first; the order is only created after
   // the user explicitly confirms in the dialog.
+  const handleInitialSubmit = () => {
+    if (!form.isValid || isSubmitting) return
+    setShowConfirmDialog(true)
+  }
+
   const handleInitialSubmit = () => {
     if (!form.isValid || isSubmitting) return
     setShowConfirmDialog(true)
@@ -151,6 +173,7 @@ export function OnrampPageClient() {
         cryptoAmount: form.cryptoAmount,
         fees: discountedFees,
         walletAddress: walletAddress,
+        referralCode: hasDiscount ? referralCode : undefined,
       }
 
       const response = await fetch('/api/onramp/create-order', {

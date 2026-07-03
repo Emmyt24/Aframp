@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { KycProvider } from '@/contexts/kyc-context'
+import { NotificationProvider } from '@/contexts/notification-context'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -51,9 +52,12 @@ export default function RootLayout({
       <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <KycProvider>
-            {children}
+            <NotificationProvider>
+              {children}
+            </NotificationProvider>
           </KycProvider>
         </ThemeProvider>
+        <CookieConsentBanner />
         <Analytics />
       </body>
     </html>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { trackConversion } from '@/lib/referral/analytics'
 
 export async function PATCH(
   request: NextRequest,
@@ -7,12 +8,25 @@ export async function PATCH(
   const { orderId } = await context.params
 
   try {
-    const { status, additionalData } = await request.json()
+    const body = await request.json()
+    const { status, additionalData } = body
+    const referralTotalFees: number | undefined = body.referralTotalFees
 
-    console.log(`Backend: Updating order ${orderId} status to ${status}`, additionalData)
+    console.warn(`Backend: Updating order ${orderId} status to ${status}`, additionalData)
 
-    // In a real application, you would update the database here
-    
+    // Record referral conversion when an order using a referral code completes
+    if (status === 'completed' && additionalData?.referralCode) {
+      trackConversion(
+        additionalData.referralCode,
+        additionalData.walletAddress ?? 'unknown',
+        orderId,
+        referralTotalFees,
+      )
+      console.warn(
+        `Referral conversion recorded for code ${additionalData.referralCode} on order ${orderId}`,
+      )
+    }
+
     // Simulate delay
     await new Promise((resolve) => setTimeout(resolve, 300))
 
