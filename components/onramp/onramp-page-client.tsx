@@ -121,6 +121,14 @@ export function OnrampPageClient() {
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+
+  // Show the confirmation summary first; the order is only created after
+  // the user explicitly confirms in the dialog.
+  const handleInitialSubmit = () => {
+    if (!form.isValid || isSubmitting) return
+    setShowConfirmDialog(true)
+  }
 
   const handleInitialSubmit = () => {
     if (!form.isValid || isSubmitting) return
@@ -187,6 +195,8 @@ export function OnrampPageClient() {
 
       localStorage.setItem(ORDER_KEY, JSON.stringify(order))
       localStorage.setItem(`onramp:order:${order.id}`, JSON.stringify(order))
+
+      setShowConfirmDialog(false)
 
       // Follow correct workflow: Calculator → Payment Instructions → Processing → Success
       router.push(`/onramp/payment?order=${order.id}`)
@@ -401,53 +411,75 @@ export function OnrampPageClient() {
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirm Order</DialogTitle>
+            <DialogTitle>Confirm your order</DialogTitle>
             <DialogDescription>
-              Please review the details of your transaction before submitting.
+              Review the details below. Your order will only be created after you confirm.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="flex justify-between border-b pb-2">
+
+          <div className="space-y-3 py-2">
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
               <span className="text-sm text-muted-foreground">You are paying</span>
-              <span className="font-medium">{formatCurrency(form.fees.totalCost, form.state.fiatCurrency)}</span>
+              <span className="font-medium">
+                {formatCurrency(form.fees.totalCost, form.state.fiatCurrency)}
+              </span>
             </div>
-            
-            <div className="flex justify-between border-b pb-2">
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
               <span className="text-sm text-muted-foreground">You will receive</span>
-              <span className="font-medium text-primary">{form.cryptoAmount} {form.state.cryptoAsset}</span>
+              <span className="font-medium text-primary">
+                {form.cryptoAmount} {form.state.cryptoAsset}
+              </span>
             </div>
-            
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-sm text-muted-foreground">Exchange Rate</span>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Exchange rate</span>
               <div className="text-right">
-                <div className="font-medium">1 {form.state.cryptoAsset} = {formatCurrency(data?.rate || 0, form.state.fiatCurrency)}</div>
-                <div className="text-xs text-muted-foreground">Updates in {countdown}s</div>
+                <div className="font-medium">
+                  1 {form.state.cryptoAsset} ={' '}
+                  {formatCurrency(data?.rate || 0, form.state.fiatCurrency)}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {countdown > 0 ? `Rate updates in ${countdown}s` : 'Refreshing rate…'}
+                </div>
               </div>
             </div>
-            
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-sm text-muted-foreground">Network Fee</span>
-              <span className="font-medium">{formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}</span>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Processing fee</span>
+              <span className="font-medium">{processingFeeLabel}</span>
             </div>
 
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-sm text-muted-foreground">Destination Address</span>
-              <span className="font-medium text-xs break-all text-right max-w-[200px]">{address}</span>
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Network fee</span>
+              <span className="font-medium">
+                {formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}
+              </span>
             </div>
 
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-sm text-muted-foreground">Estimated Time</span>
-              <span className="font-medium">Seconds</span>
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Destination address</span>
+              <span className="max-w-[200px] break-all text-right text-xs font-medium">
+                {address || 'Connect wallet'}
+              </span>
+            </div>
+
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-sm text-muted-foreground">Estimated completion</span>
+              <span className="font-medium">A few seconds</span>
             </div>
           </div>
-          
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end mt-4">
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={isSubmitting}>
+
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? 'Processing...' : 'Confirm and Pay'}
+              {isSubmitting ? 'Processing…' : 'Confirm and Pay'}
             </Button>
           </div>
         </DialogContent>

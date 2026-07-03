@@ -94,6 +94,14 @@ export function OfframpPageClient() {
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+
+  // Show the confirmation summary first; the order is only created after
+  // the user explicitly confirms in the dialog.
+  const handleInitialSubmit = () => {
+    if (!form.isValid || isSubmitting) return
+    setShowConfirmDialog(true)
+  }
 
   const handleInitialSubmit = () => {
     if (!form.isValid || isSubmitting) return
@@ -137,6 +145,9 @@ export function OfframpPageClient() {
 
       localStorage.setItem(ORDER_KEY, JSON.stringify(order))
       localStorage.setItem(`offramp:order:${order.id}`, JSON.stringify(order))
+
+      setShowConfirmDialog(false)
+
       router.push(`/offramp/bank-details?order=${order.id}`)
     } catch (err) {
       console.error('Offramp order creation failed:', err)
@@ -274,55 +285,72 @@ export function OfframpPageClient() {
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirm Order</DialogTitle>
+            <DialogTitle>Confirm your withdrawal</DialogTitle>
             <DialogDescription>
-              Please review the details of your transaction before submitting.
+              Review the details below. Your order will only be created after you confirm.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="flex justify-between border-b pb-2">
+
+          <div className="space-y-3 py-2">
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
               <span className="text-sm text-muted-foreground">You are selling</span>
-              <span className="font-medium">{form.state.amountInput || '0'} {selectedAsset.asset}</span>
+              <span className="font-medium">
+                {form.state.amountInput || '0'} {selectedAsset.asset}
+              </span>
             </div>
-            
-            <div className="flex justify-between border-b pb-2">
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
               <span className="text-sm text-muted-foreground">You will receive</span>
-              <span className="font-medium text-primary">{formatCurrency(form.fees.receiveAmount, form.state.fiatCurrency)}</span>
+              <span className="font-medium text-primary">
+                {formatCurrency(form.fees.receiveAmount, form.state.fiatCurrency)}
+              </span>
             </div>
-            
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-sm text-muted-foreground">Exchange Rate</span>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Exchange rate</span>
               <div className="text-right">
-                <div className="font-medium">1 {selectedAsset.asset} = {formatCurrency(rate || 0, form.state.fiatCurrency)}</div>
+                <div className="font-medium">
+                  1 {selectedAsset.asset} = {formatCurrency(rate || 0, form.state.fiatCurrency)}
+                </div>
                 <div className="text-xs text-muted-foreground">
-                  Lock: {lockCountdown !== null ? formatRateCountdown(lockCountdown) : '15:00 on submit'}
+                  Rate lock:{' '}
+                  {lockCountdown !== null
+                    ? formatRateCountdown(lockCountdown)
+                    : '15:00 on submit'}
                 </div>
               </div>
             </div>
-            
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-sm text-muted-foreground">Network Fee</span>
-              <span className="font-medium">{formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}</span>
+
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Network fee</span>
+              <span className="font-medium">
+                {formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}
+              </span>
             </div>
 
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-sm text-muted-foreground">Destination Bank</span>
-              <span className="font-medium text-xs">To be provided next</span>
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-2">
+              <span className="text-sm text-muted-foreground">Destination bank account</span>
+              <span className="max-w-[200px] text-right text-xs font-medium">
+                Entered on the next step
+              </span>
             </div>
 
-            <div className="flex justify-between border-b pb-2">
-              <span className="text-sm text-muted-foreground">Estimated Time</span>
-              <span className="font-medium">1-3 Business Days</span>
+            <div className="flex items-start justify-between gap-4">
+              <span className="text-sm text-muted-foreground">Estimated completion</span>
+              <span className="font-medium">1–3 business days</span>
             </div>
           </div>
-          
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end mt-4">
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)} disabled={isSubmitting}>
+
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting ? 'Processing...' : 'Confirm and Pay'}
+              {isSubmitting ? 'Processing…' : 'Confirm and Pay'}
             </Button>
           </div>
         </DialogContent>
