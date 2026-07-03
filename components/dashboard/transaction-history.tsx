@@ -44,7 +44,7 @@ import { cn } from '@/lib/utils'
 
 const TransactionChart = dynamic(
   () => import('./transaction-chart').then((m) => m.TransactionChart),
-  { ssr: false, loading: () => <div className="h-40 animate-pulse rounded-lg bg-muted" /> }
+  { ssr: false, loading: () => <div className="h-40 rounded-lg"><div className="h-full w-full rounded-lg bg-muted/40 animate-pulse" /></div> }
 )
 
 const VIRTUAL_THRESHOLD = 50
