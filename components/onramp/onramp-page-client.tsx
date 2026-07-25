@@ -23,10 +23,9 @@ import type { CryptoAsset, FiatCurrency } from '@/types/onramp'
 import { formatCurrency } from '@/lib/onramp/formatters'
 import { isValidStellarAddress } from '@/lib/onramp/validation'
 import type { OnrampOrder } from '@/types/onramp'
+import { persistOrder } from '@/lib/orders/order-client'
 import { Button } from '@/components/ui/button' // Added missing import for Button
 import { Skeleton } from '@/components/ui/skeleton'
-
-const ORDER_KEY = 'onramp:latest-order'
 
 export function OnrampPageClient() {
   const router = useRouter()
@@ -142,8 +141,11 @@ export function OnrampPageClient() {
 
     if (hasDiscount) markReferralDiscountConsumed()
 
-    localStorage.setItem(ORDER_KEY, JSON.stringify(order))
-    localStorage.setItem(`onramp:order:${order.id}`, JSON.stringify(order))
+    // Caches the order synchronously and syncs it to the server in the
+    // background, so the order survives a cleared cache or a device switch.
+    // Not awaited: the client-side navigation below keeps the request alive,
+    // and a slow round-trip must not delay the flow.
+    void persistOrder('onramp', order, walletAddress)
 
     // Follow correct workflow: Calculator → Payment Instructions → Processing → Success
     router.push(`/onramp/payment?order=${order.id}`)

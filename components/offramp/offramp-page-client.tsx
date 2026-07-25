@@ -14,8 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/onramp/formatters'
 import { formatUsd, formatRateCountdown } from '@/lib/offramp/formatters'
 import type { OfframpOrder } from '@/types/offramp'
+import { persistOrder } from '@/lib/orders/order-client'
 
-const ORDER_KEY = 'offramp:latest-order'
 const LOCK_KEY = 'offramp:rate-lock'
 
 const assetUsdRates: Record<string, number> = {
@@ -94,6 +94,7 @@ export function OfframpPageClient() {
     const order: OfframpOrder = {
       id: `offramp-${Date.now()}`,
       createdAt: Date.now(),
+      walletAddress: address,
       lockExpiresAt: lockExpires,
       assetId: selectedAsset.id,
       asset: selectedAsset.asset,
@@ -106,8 +107,11 @@ export function OfframpPageClient() {
       status: 'pending_bank_details',
     }
 
-    localStorage.setItem(ORDER_KEY, JSON.stringify(order))
-    localStorage.setItem(`offramp:order:${order.id}`, JSON.stringify(order))
+    // Caches the order synchronously and syncs it to the server in the
+    // background, so the order survives a cleared cache or a device switch.
+    // Not awaited: the client-side navigation below keeps the request alive.
+    void persistOrder('offramp', order, address)
+
     router.push(`/offramp/bank-details?order=${order.id}`)
   }
 

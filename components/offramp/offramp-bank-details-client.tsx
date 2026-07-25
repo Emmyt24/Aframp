@@ -9,12 +9,20 @@ import { BankAccountForm } from '@/components/offramp/bank-account-form'
 import { KYCSignature } from '@/components/offramp/kyc-signature'
 import { SavedAccounts } from '@/components/offramp/saved-accounts'
 import { MOCK_ORDER } from '@/lib/offramp/mock-api'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useOfframpOrder } from '@/hooks/use-offramp-order'
 
 export function OfframpBankDetailsClient() {
   const [step, setStep] = React.useState<'select' | 'verify' | 'sign'>('select')
   const [selectedAccount, setSelectedAccount] = React.useState<BankAccount | null>(null)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // The order the calculator created — resolved from the server so the amount
+  // survives a cleared cache or a device switch.  Falls back to the mock order
+  // when the page is opened without an order id.
+  const { order } = useOfframpOrder(searchParams.get('order'))
+  const signatureAmount = order?.fiatAmount ?? MOCK_ORDER.fiatAmount
 
   const handleAccountSelect = (account: BankAccount) => {
     setSelectedAccount(account)
@@ -129,7 +137,7 @@ export function OfframpBankDetailsClient() {
           {step === 'sign' && selectedAccount && (
             <KYCSignature
               account={selectedAccount}
-              amount={MOCK_ORDER.fiatAmount}
+              amount={signatureAmount}
               onSigned={handleSigned}
               onBack={() => setStep('verify')}
             />
