@@ -11,7 +11,7 @@
  * be built relative to a fixed instant and the tests stay readable.
  */
 
-import { DAY_MS, HOUR_MS, JURISDICTIONS, VELOCITY_RULES } from '../config'
+import { DAY_MS, HOUR_MS, JURISDICTIONS, UNLICENSED_MARKET_POLICY, VELOCITY_RULES } from '../config'
 import { _clearLedger, recordTransaction } from '../ledger'
 import type { ScreeningSubject, SignalCode } from '../types'
 import { evaluateVelocityRules } from '../velocity'
@@ -186,6 +186,26 @@ describe('STRUCTURING', () => {
       bandedCount: 3,
       reportingThresholdCents: threshold,
       jurisdiction: 'NG',
+    })
+  })
+
+  it('still runs in a market with no local AML registration', () => {
+    // Structuring detection must not switch off just because there is nowhere
+    // to file the result — the transaction is still held and reviewed.
+    const unlicensedBand = Math.round(
+      UNLICENSED_MARKET_POLICY.reportingThresholdCents * 0.9
+    )
+    seed(DAY_MS, unlicensedBand)
+    seed(2 * DAY_MS, unlicensedBand)
+
+    const signal = run({ amountCents: unlicensedBand, jurisdiction: 'TZ' }).find(
+      (s) => s.code === 'STRUCTURING'
+    )
+
+    expect(signal).toBeDefined()
+    expect(signal?.metadata).toMatchObject({
+      jurisdiction: 'TZ',
+      reportingThresholdCents: UNLICENSED_MARKET_POLICY.reportingThresholdCents,
     })
   })
 })

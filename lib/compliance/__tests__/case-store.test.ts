@@ -266,6 +266,20 @@ describe('draftSar', () => {
     expect(new Date(sar.dueAt).getTime()).toBe(expectedDue)
   })
 
+  it('refuses to draft against a market with no filing route', () => {
+    // There is no FIU to receive it.  Minting a SAR addressed to no regulator
+    // would set `sarId` and make the case read as discharged everywhere that
+    // counts filings, while the review obligation is still live.
+    const record = open({ jurisdiction: 'TZ' })
+
+    expect(() =>
+      draftSar({ caseId: record.id, analystId: 'ada.okafor', narrative: NARRATIVE })
+    ).toThrow(expect.objectContaining({ code: 'NO_FILING_ROUTE' }))
+
+    expect(getCase(record.id)?.sarId).toBeUndefined()
+    expect(getCase(record.id)?.status).toBe('OPEN')
+  })
+
   it('applies each market own filing window', () => {
     const cases: Record<string, string> = {}
     for (const code of ['NG', 'KE', 'ZA'] as Jurisdiction[]) {

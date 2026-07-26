@@ -14,7 +14,7 @@
  *     a scheduled basis.  They are configuration, not fact.
  */
 
-import type { Jurisdiction, RiskLevel } from './types'
+import type { Jurisdiction, Market, RiskLevel } from './types'
 
 // ---------------------------------------------------------------------------
 // Risk bands
@@ -184,6 +184,13 @@ export const VELOCITY_RULES = {
 // ---------------------------------------------------------------------------
 
 export interface JurisdictionPolicy {
+  /**
+   * Whether Aframp holds an AML registration in this market.
+   *
+   * `false` means there is no FIU to file with — the screening controls still
+   * run, but a SAR cannot be raised.  See UNLICENSED_MARKET_POLICY.
+   */
+  licensed: boolean
   /** Receiving financial intelligence unit. */
   regulator: string
   regulatorName: string
@@ -207,6 +214,7 @@ export interface JurisdictionPolicy {
 
 export const JURISDICTIONS: Record<Jurisdiction, JurisdictionPolicy> = {
   NG: {
+    licensed: true,
     regulator: 'NFIU',
     regulatorName: 'Nigerian Financial Intelligence Unit',
     filingName: 'Suspicious Transaction Report (STR)',
@@ -215,6 +223,7 @@ export const JURISDICTIONS: Record<Jurisdiction, JurisdictionPolicy> = {
     localThresholdNote: '≈ ₦5,000,000 individual threshold (MLPPA 2022)',
   },
   KE: {
+    licensed: true,
     regulator: 'FRC',
     regulatorName: 'Financial Reporting Centre',
     filingName: 'Suspicious Transaction Report (STR)',
@@ -223,6 +232,7 @@ export const JURISDICTIONS: Record<Jurisdiction, JurisdictionPolicy> = {
     localThresholdNote: '≈ KES 1,000,000 threshold (POCAMLA)',
   },
   GH: {
+    licensed: true,
     regulator: 'FIC',
     regulatorName: 'Financial Intelligence Centre',
     filingName: 'Suspicious Transaction Report (STR)',
@@ -231,6 +241,7 @@ export const JURISDICTIONS: Record<Jurisdiction, JurisdictionPolicy> = {
     localThresholdNote: '≈ GHS 50,000 threshold (AMLA 2020)',
   },
   ZA: {
+    licensed: true,
     regulator: 'FIC',
     regulatorName: 'Financial Intelligence Centre',
     filingName: 'Suspicious Transaction Report (STR), FICA s29',
@@ -239,6 +250,7 @@ export const JURISDICTIONS: Record<Jurisdiction, JurisdictionPolicy> = {
     localThresholdNote: '≈ R49,999.99 cash threshold (FICA)',
   },
   UG: {
+    licensed: true,
     regulator: 'FIA',
     regulatorName: 'Financial Intelligence Authority',
     filingName: 'Suspicious Transaction Report (STR)',
@@ -246,6 +258,99 @@ export const JURISDICTIONS: Record<Jurisdiction, JurisdictionPolicy> = {
     reportingThresholdCents: 5_400_00,
     localThresholdNote: '≈ UGX 20,000,000 threshold (AMLA 2013)',
   },
+}
+
+/**
+ * Policy applied to markets Aframp accepts payments from but is not registered
+ * in — see UnlicensedMarket in ./types.ts.
+ *
+ * This is a stopgap, not a licence.  Screening still runs in full: sanctions,
+ * wallet risk and every velocity rule behave identically, because a designated
+ * person is designated everywhere and the FATF recommendations do not stop at
+ * our licensing footprint.  What is missing is the part that requires a
+ * regulator: there is no FIU to file with, so `draftSar()` refuses on these
+ * cases and an analyst can only disposition them internally.
+ *
+ * The threshold is deliberately the lowest of the five licensed markets rather
+ * than an average.  Structuring detection anchors to it, and a threshold set
+ * too high simply fails to detect — under-detecting in a market with no filing
+ * route is the worse error.
+ *
+ * Onboarding one of these markets properly means adding it to JURISDICTIONS
+ * with figures from local counsel, at which point it stops resolving here.
+ */
+export const UNLICENSED_MARKET_POLICY: JurisdictionPolicy = {
+  licensed: false,
+  regulator: 'NONE',
+  regulatorName: 'No AML registration held in this market',
+  filingName: 'Not filable — no registration',
+  // Only used to age the internal review queue; nothing is filed against it.
+  filingDeadlineHours: 24,
+  reportingThresholdCents: Math.min(
+    ...Object.values(JURISDICTIONS).map((p) => p.reportingThresholdCents)
+  ),
+  localThresholdNote:
+    'No local statutory threshold — defaults to the lowest licensed-market threshold',
+}
+
+/**
+ * Which market a payment currency belongs to.
+ *
+ * Currency is the only market signal the mobile-money and bill-payment routes
+ * carry, and it is the one the payment provider itself settles on, so it is a
+ * better source than a client-supplied country code.  Currencies absent here
+ * cannot be screened under any policy — the payment route must refuse rather
+ * than guess (see resolveMarket() in ./markets.ts).
+ */
+export const CURRENCY_MARKETS: Record<string, Market> = {
+  // Licensed markets
+  NGN: 'NG',
+  KES: 'KE',
+  GHS: 'GH',
+  ZAR: 'ZA',
+  UGX: 'UG',
+  // Mobile-money markets without a local AML registration
+  TZS: 'TZ',
+  XAF: 'CM',
+  XOF: 'CI',
+  RWF: 'RW',
+  ZMW: 'ZM',
+}
+
+/**
+ * Reference FX rates: USD cents per one major unit of local currency.
+ *
+ * ⚠️  Configuration, not a price feed, and deliberately so.  Every threshold in
+ *     this module is in USD cents, so a local-currency payment has to be
+ *     converted before any rule can see it.  Two things that must not happen:
+ *
+ *     1. Screening must not depend on a third-party rate API.  That would put a
+ *        network call with its own outage profile in the payment path, and
+ *        under FAIL_CLOSED every rate outage becomes a payments outage.
+ *     2. Thresholds must not move minute to minute.  A structuring band that
+ *        drifts with spot makes "was this transaction in the band?" unanswerable
+ *        after the fact, and an audit trail that cannot be reproduced is not
+ *        one.
+ *
+ *     The cost is drift: these are stale the moment they are committed. Review
+ *     on the same schedule as the reportingThresholdCents figures they interact
+ *     with, and re-derive both together — a rate revision that leaves the
+ *     thresholds untouched silently retunes every rule.
+ *
+ *     Rates below are approximate mid-market as of 2026-07.
+ */
+export const FX_USD_CENTS_PER_UNIT: Record<string, number> = {
+  USD: 100,
+  NGN: 0.066,
+  KES: 0.77,
+  GHS: 8.0,
+  ZAR: 5.4,
+  UGX: 0.027,
+  TZS: 0.038,
+  XAF: 0.17,
+  XOF: 0.17,
+  RWF: 0.072,
+  ZMW: 3.8,
 }
 
 // ---------------------------------------------------------------------------

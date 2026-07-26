@@ -86,7 +86,14 @@ CREATE TABLE IF NOT EXISTS compliance_cases (
   transaction_id TEXT        NOT NULL UNIQUE,
   user_id        TEXT        NOT NULL,
   kind           TEXT        NOT NULL CHECK (kind IN ('onramp', 'offramp', 'billpay')),
-  jurisdiction   TEXT        NOT NULL CHECK (jurisdiction IN ('NG', 'KE', 'GH', 'ZA', 'UG')),
+  -- Wider than compliance_sars.jurisdiction below, and deliberately so: the
+  -- mobile-money footprint reaches markets with no local AML registration.
+  -- Those transactions are still screened and still open cases; what they
+  -- cannot do is produce a filing.  See UNLICENSED_MARKET_POLICY in
+  -- lib/compliance/config.ts.
+  jurisdiction   TEXT        NOT NULL
+                   CHECK (jurisdiction IN ('NG', 'KE', 'GH', 'ZA', 'UG',
+                                           'TZ', 'CM', 'CI', 'RW', 'ZM')),
   amount_cents   BIGINT      NOT NULL,
   asset          TEXT        NOT NULL,
   status         TEXT        NOT NULL
@@ -132,6 +139,10 @@ CREATE TABLE IF NOT EXISTS compliance_sars (
   id                    TEXT        PRIMARY KEY,
   case_id               TEXT        NOT NULL REFERENCES compliance_cases (id),
   user_id               TEXT        NOT NULL,
+  -- Licensed markets only.  This is the database-level counterpart of the
+  -- NO_FILING_ROUTE check in draftSar(): a SAR addressed to no regulator would
+  -- set compliance_cases.sar_id and make a live review obligation read as
+  -- discharged in every queue and count.
   jurisdiction          TEXT        NOT NULL CHECK (jurisdiction IN ('NG', 'KE', 'GH', 'ZA', 'UG')),
   regulator             TEXT        NOT NULL,
   status                TEXT        NOT NULL

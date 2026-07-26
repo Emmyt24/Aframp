@@ -18,9 +18,12 @@ before it can be relied on in production.
 
 ```
                        ┌──────────────────────────────┐
-  payment routes ─────►│  screenTransaction()         │
-  /api/withdrawals     │  lib/compliance/monitor.ts   │
-  /api/compliance/screen└──────────────┬───────────────┘
+payment routes ───────►│  screenTransaction()         │
+/api/withdrawals       │  lib/compliance/monitor.ts   │
+/api/payments/…        │                              │
+/api/bills/initiate    │                              │
+/api/compliance/screen │                              │
+                       └───────────────┬──────────────┘
                                        │
               ┌────────────────────────┼────────────────────────┐
               ▼                        ▼                        ▼
@@ -47,6 +50,7 @@ before it can be relied on in production.
 | Concern | Module |
 | --- | --- |
 | Policy — every threshold, window and score | `lib/compliance/config.ts` |
+| Market resolution, FX and payer identity | `lib/compliance/markets.ts`, `identity.ts` |
 | Risk aggregation and decisions | `lib/compliance/risk.ts` |
 | Velocity / behavioural rules | `lib/compliance/velocity.ts` |
 | Monitoring ledger | `lib/compliance/ledger.ts` |
@@ -189,6 +193,28 @@ to a case without seeing why it was flagged.
 The code says "SAR" because that is the term in the requirement. Every regulator
 above calls the same artefact a Suspicious Transaction Report (STR).
 
+### Markets without a local registration
+
+Mobile money is available in five countries beyond the licensed five — TZ, CM,
+CI, RW and ZM. A payment from one of them is screened in full: sanctions,
+wallet risk and every velocity rule behave identically, because a designated
+person is designated everywhere. What it cannot produce is a filing.
+`draftSar()` refuses on these cases with `NO_FILING_ROUTE`, and the SQL `CHECK`
+on `compliance_sars.jurisdiction` refuses the row independently, so an analyst
+can only disposition them internally and escalate to the MLRO.
+
+Their structuring anchor is `UNLICENSED_MARKET_POLICY` — the lowest of the five
+licensed thresholds rather than an average, because under-detecting in a market
+with no filing route is the worse error. See gap 10.
+
+### Currency
+
+Screening thresholds are USD cents throughout. `resolveMarket()` maps the
+payment currency to the market whose policy applies, and `toUsdCents()`
+converts the amount using the static table in `FX_USD_CENTS_PER_UNIT`. A
+currency in neither table is refused (`UNSUPPORTED_MARKET`, HTTP 422) rather
+than screened against a guessed market — see gap 8.
+
 ---
 
 ## Analyst workflow
@@ -323,7 +349,31 @@ Ordered by what blocks production first.
    standard control and is not implemented. `screenTransaction()` accepts
    `skipLedger` specifically so that job can re-screen without double-counting.
 
-8. **Onramp and bill payments are not yet wired in.** Only `/api/withdrawals`
-   calls `screenTransaction()`. `/api/compliance/screen` exists for the other
-   paths to call; they do not call it yet. The offramp leg was done first
-   because that is where a designated person actually receives value.
+8. **FX rates are configuration, not a feed.** Thresholds are in USD cents;
+   mobile-money and bill payments arrive in local currency, so
+   `FX_USD_CENTS_PER_UNIT` converts them. It is a static table, deliberately —
+   a rate API in the payment path turns every rate outage into a payments
+   outage under `FAIL_CLOSED`, and a band that drifts with spot makes "was this
+   transaction in the band?" unanswerable after the fact. The cost is drift.
+   Review it on the same cycle as `reportingThresholdCents`, and re-derive both
+   together: revising rates without revising thresholds silently retunes every
+   rule.
+
+9. **Anonymous payers are identified by instrument.** Bill and mobile-money
+   payers without a connected wallet are keyed to a salted hash of their phone
+   number or email (`lib/compliance/identity.ts`). One person with two handsets
+   is two accounts to the velocity rules; a shared handset is one account for
+   two people. Both resolve once the payer connects a wallet, which is why the
+   wallet key is preferred whenever the client sends one. Proper identity
+   resolution — linking instruments to a customer record — is the real fix and
+   is not implemented.
+
+10. **Markets without a local registration are screened but not filable.**
+    Mobile money reaches TZ, CM, CI, RW and ZM, where Aframp holds no AML
+    registration. Those transactions are screened in full under
+    `UNLICENSED_MARKET_POLICY`, and `draftSar()` refuses on the resulting cases
+    because there is no FIU to receive a filing. An analyst can disposition
+    them internally and nothing more. This is a stopgap that keeps the payment
+    path from moving money unscreened — it is not a substitute for either
+    registering in those markets or withdrawing from them, and that decision
+    should not sit with engineering.

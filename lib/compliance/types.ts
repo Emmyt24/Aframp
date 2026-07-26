@@ -88,6 +88,28 @@ export type TransactionKind = 'onramp' | 'offramp' | 'billpay'
 export type Jurisdiction = 'NG' | 'KE' | 'GH' | 'ZA' | 'UG'
 
 /**
+ * Markets Aframp accepts payments from but holds no AML registration in — the
+ * mobile-money footprint in lib/payments/regions.ts is wider than the licensed
+ * footprint.
+ *
+ * These are not jurisdictions in the regulatory sense: there is no FIU we file
+ * with and no statutory threshold to anchor structuring against.  They exist as
+ * a type so a transaction from one cannot be silently screened under some other
+ * market's policy, and so the console can show an analyst that a case has no
+ * filing route.  See UNLICENSED_MARKET_POLICY in ./config.ts.
+ */
+export type UnlicensedMarket = 'TZ' | 'CM' | 'CI' | 'RW' | 'ZM'
+
+/**
+ * Any market a screened transaction can originate in.
+ *
+ * Prefer `Jurisdiction` wherever the value genuinely must be a licensed market
+ * (SAR filing, regulator routing).  `Market` is for the screening path, which
+ * must accept everything the payment routes accept.
+ */
+export type Market = Jurisdiction | UnlicensedMarket
+
+/**
  * A transaction presented for screening.
  *
  * Amounts are integer **USD cents** everywhere in this module, matching
@@ -103,7 +125,12 @@ export interface ScreeningSubject {
   amountCents: number
   asset: string
   chain: string
-  jurisdiction: Jurisdiction
+  /**
+   * Where the transaction originates.  Drives the structuring threshold, the
+   * SAR filing deadline and the country hint sent to name screening.  May be an
+   * unlicensed market — see UNLICENSED_MARKET_POLICY.
+   */
+  jurisdiction: Market
 
   /** Counterparty crypto address, when the transaction has one. */
   walletAddress?: string
@@ -215,7 +242,7 @@ export interface ComplianceCase {
   transactionId: string
   userId: string
   kind: TransactionKind
-  jurisdiction: Jurisdiction
+  jurisdiction: Market
   amountCents: number
   asset: string
   status: CaseStatus

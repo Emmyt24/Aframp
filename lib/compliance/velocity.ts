@@ -19,7 +19,8 @@
  * or corroboration between rules to hold a payment.  See scoreSignals().
  */
 
-import { DAY_MS, JURISDICTIONS, VELOCITY_RULES } from './config'
+import { DAY_MS, VELOCITY_RULES } from './config'
+import { policyFor } from './markets'
 import {
   getDistinctCounterparties,
   getEntriesInWindow,
@@ -192,7 +193,8 @@ function checkStructuring(subject: ScreeningSubject, now: Date): RiskSignal | nu
   const rule = VELOCITY_RULES.structuring
   if (!rule.enabled) return null
 
-  const threshold = JURISDICTIONS[subject.jurisdiction].reportingThresholdCents
+  const policy = policyFor(subject.jurisdiction)
+  const threshold = policy.reportingThresholdCents
   const bandFloor = threshold * (1 - rule.bandPct)
 
   const inBand = (amount: number) => amount >= bandFloor && amount < threshold
@@ -219,7 +221,7 @@ function checkStructuring(subject: ScreeningSubject, now: Date): RiskSignal | nu
       bandFloorCents: Math.round(bandFloor),
       windowDays: Math.round(rule.windowMs / DAY_MS),
       jurisdiction: subject.jurisdiction,
-      localThresholdNote: JURISDICTIONS[subject.jurisdiction].localThresholdNote,
+      localThresholdNote: policy.localThresholdNote,
     },
   }
 }

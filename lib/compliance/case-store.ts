@@ -19,13 +19,15 @@
  *   deleted by whoever compromises it.  Cases close; they do not disappear.
  */
 
-import { JURISDICTIONS, RECORD_RETENTION_YEARS } from './config'
+import { RECORD_RETENTION_YEARS } from './config'
+import { isLicensedJurisdiction, policyFor } from './markets'
 import type {
   CaseDisposition,
   CaseEvent,
   CaseStatus,
   ComplianceCase,
   Jurisdiction,
+  Market,
   SarRecord,
   SarStatus,
   ScreeningResult,
@@ -122,7 +124,7 @@ export function getCaseByTransaction(transactionId: string): ComplianceCase | nu
 
 export interface ListCasesOptions {
   status?: CaseStatus
-  jurisdiction?: Jurisdiction
+  jurisdiction?: Market
   assignedTo?: string
   userId?: string
   /** Only cases at or above this aggregate score. */
@@ -331,7 +333,12 @@ export interface DraftSarInput {
 }
 
 export class SarError extends Error {
-  readonly code: 'CASE_NOT_FOUND' | 'ALREADY_FILED' | 'SAR_NOT_FOUND' | 'INVALID_TRANSITION'
+  readonly code:
+    | 'CASE_NOT_FOUND'
+    | 'ALREADY_FILED'
+    | 'SAR_NOT_FOUND'
+    | 'INVALID_TRANSITION'
+    | 'NO_FILING_ROUTE'
 
   constructor(code: SarError['code'], message: string) {
     super(message)
@@ -350,6 +357,11 @@ export class SarError extends Error {
  *
  * Drafting also moves the case to CONFIRMED_SUSPICIOUS: you do not report a
  * transaction you consider clean.
+ *
+ * Refuses on cases from unlicensed markets.  There is no FIU to receive the
+ * filing, and minting a SAR addressed to no regulator would leave the case
+ * looking discharged in every queue and count that reads `sarId` — the review
+ * obligation is still live and must stay visibly so.
  */
 export function draftSar({ caseId, analystId, narrative }: DraftSarInput): SarRecord {
   const record = _caseStore.get(caseId)
@@ -357,8 +369,15 @@ export function draftSar({ caseId, analystId, narrative }: DraftSarInput): SarRe
   if (record.sarId) {
     throw new SarError('ALREADY_FILED', `Case ${caseId} already has SAR ${record.sarId}`)
   }
+  if (!isLicensedJurisdiction(record.jurisdiction)) {
+    throw new SarError(
+      'NO_FILING_ROUTE',
+      `Case ${caseId} originates in ${record.jurisdiction}, where Aframp holds no AML registration. ` +
+        `Disposition it internally and escalate to the MLRO — there is no FIU to file with.`
+    )
+  }
 
-  const policy = JURISDICTIONS[record.jurisdiction]
+  const policy = policyFor(record.jurisdiction)
   const suspicionFormedAt = record.createdAt
   const dueAt = new Date(
     new Date(suspicionFormedAt).getTime() + policy.filingDeadlineHours * 3_600_000
