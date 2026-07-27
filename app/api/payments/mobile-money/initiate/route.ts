@@ -4,7 +4,7 @@ import { getProvider, MobileMoneyError } from '@/lib/payments'
 import type { MobileMoneyProviderName } from '@/lib/payments'
 
 const bodySchema = z.object({
-  provider: z.enum(['mpesa', 'mtn_momo']),
+  provider: z.enum(['mpesa', 'mtn_momo', 'flutterwave']),
   phoneNumber: z
     .string()
     .regex(/^\+\d{7,15}$/, 'phoneNumber must be in E.164 format, e.g. +254712345678'),
@@ -13,6 +13,7 @@ const bodySchema = z.object({
   accountReference: z.string().min(1).max(12),
   transactionDesc: z.string().min(1).max(13),
   externalId: z.string().min(1),
+  email: z.string().email().optional(),
 })
 
 export async function POST(request: NextRequest) {

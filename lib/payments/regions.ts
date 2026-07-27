@@ -29,6 +29,13 @@ export const MOBILE_MONEY_AVAILABILITY: Record<string, MobileMoneyOption[]> = {
       dialPrefix: '+254',
       phonePattern: '^\\+2547\\d{8}$',
     },
+    {
+      provider: 'flutterwave',
+      label: 'M-Pesa (Flutterwave)',
+      description: 'Pay via M-Pesa through Flutterwave collections',
+      dialPrefix: '+254',
+      phonePattern: '^\\+254\\d{9}$',
+    },
   ],
   TZ: [
     {
@@ -37,6 +44,13 @@ export const MOBILE_MONEY_AVAILABILITY: Record<string, MobileMoneyOption[]> = {
       description: 'Pay via M-Pesa (Vodacom Tanzania)',
       dialPrefix: '+255',
       phonePattern: '^\\+2556\\d{8}$',
+    },
+    {
+      provider: 'flutterwave',
+      label: 'Mobile Money (Flutterwave)',
+      description: 'Pay via mobile money through Flutterwave collections',
+      dialPrefix: '+255',
+      phonePattern: '^\\+255\\d{9}$',
     },
   ],
 
@@ -49,6 +63,13 @@ export const MOBILE_MONEY_AVAILABILITY: Record<string, MobileMoneyOption[]> = {
       dialPrefix: '+237',
       phonePattern: '^\\+237[67]\\d{8}$',
     },
+    {
+      provider: 'flutterwave',
+      label: 'Mobile Money (Flutterwave)',
+      description: 'Pay via mobile money through Flutterwave collections',
+      dialPrefix: '+237',
+      phonePattern: '^\\+237\\d{9}$',
+    },
   ],
   CI: [
     {
@@ -57,6 +78,13 @@ export const MOBILE_MONEY_AVAILABILITY: Record<string, MobileMoneyOption[]> = {
       description: "Pay via MTN Mobile Money (Côte d'Ivoire)",
       dialPrefix: '+225',
       phonePattern: '^\\+2250[57]\\d{8}$',
+    },
+    {
+      provider: 'flutterwave',
+      label: 'Mobile Money (Flutterwave)',
+      description: 'Pay via mobile money through Flutterwave collections',
+      dialPrefix: '+225',
+      phonePattern: '^\\+225\\d{10}$',
     },
   ],
   RW: [
@@ -67,6 +95,13 @@ export const MOBILE_MONEY_AVAILABILITY: Record<string, MobileMoneyOption[]> = {
       dialPrefix: '+250',
       phonePattern: '^\\+2507[89]\\d{7}$',
     },
+    {
+      provider: 'flutterwave',
+      label: 'Mobile Money (Flutterwave)',
+      description: 'Pay via mobile money through Flutterwave collections',
+      dialPrefix: '+250',
+      phonePattern: '^\\+250\\d{9}$',
+    },
   ],
   ZM: [
     {
@@ -75,6 +110,13 @@ export const MOBILE_MONEY_AVAILABILITY: Record<string, MobileMoneyOption[]> = {
       description: 'Pay via MTN Mobile Money (Zambia)',
       dialPrefix: '+260',
       phonePattern: '^\\+26096\\d{7}$',
+    },
+    {
+      provider: 'flutterwave',
+      label: 'Mobile Money (Flutterwave)',
+      description: 'Pay via mobile money through Flutterwave collections',
+      dialPrefix: '+260',
+      phonePattern: '^\\+260\\d{9}$',
     },
   ],
 
@@ -94,6 +136,13 @@ export const MOBILE_MONEY_AVAILABILITY: Record<string, MobileMoneyOption[]> = {
       dialPrefix: '+233',
       phonePattern: '^\\+2332[45]\\d{7}$',
     },
+    {
+      provider: 'flutterwave',
+      label: 'Mobile Money (Flutterwave)',
+      description: 'Pay via MTN/Vodafone/AirtelTigo through Flutterwave collections',
+      dialPrefix: '+233',
+      phonePattern: '^\\+233\\d{9}$',
+    },
   ],
   UG: [
     {
@@ -109,6 +158,13 @@ export const MOBILE_MONEY_AVAILABILITY: Record<string, MobileMoneyOption[]> = {
       description: 'Pay via MTN Mobile Money (Uganda)',
       dialPrefix: '+256',
       phonePattern: '^\\+2567[67]\\d{7}$',
+    },
+    {
+      provider: 'flutterwave',
+      label: 'Mobile Money (Flutterwave)',
+      description: 'Pay via mobile money through Flutterwave collections',
+      dialPrefix: '+256',
+      phonePattern: '^\\+256\\d{9}$',
     },
   ],
 }
