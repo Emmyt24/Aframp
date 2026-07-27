@@ -1,13 +1,6 @@
 import withPWAInit from 'next-pwa'
 import { withSentryConfig } from '@sentry/nextjs'
 
-const withPWA = withPWAInit({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-})
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -40,4 +33,16 @@ const nextConfig = {
   },
 }
 
-export default withSentryConfig(withPWA(nextConfig))
+// next-pwa@2.0.2 doesn't curry — it takes the full Next config (with PWA
+// options nested under `pwa`) and returns the final config directly.
+const configWithPWA = withPWAInit({
+  pwa: {
+    dest: 'public',
+    register: true,
+    skipWaiting: true,
+    disable: process.env.NODE_ENV === 'development',
+  },
+  ...nextConfig,
+})
+
+export default withSentryConfig(configWithPWA)
