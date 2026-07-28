@@ -9,7 +9,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { ArrowUp, ScanLine } from 'lucide-react'
+import { ArrowUp, ScanLine, AlertTriangle } from 'lucide-react'
+import { sendStellarP2P, isValidStellarAddress } from '@/lib/stellar-p2p'
+import type { FreighterNetwork } from '@/lib/wallet'
 
 interface SendModalProps {
   open: boolean
@@ -21,18 +23,54 @@ export function SendModal({ open, onOpenChange }: SendModalProps) {
   const [address, setAddress] = useState('')
   const [currency, setCurrency] = useState('cNGN')
   const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const currencies = ['cNGN', 'BTC', 'ETH', 'XLM', 'USDT']
 
   const handleSend = async () => {
+    setError(null)
+
+    // Validate destination address
+    if (!isValidStellarAddress(address)) {
+      setError('Invalid Stellar address. Must start with G and be 56 characters.')
+      return
+    }
+
+    // Read wallet info from localStorage (same pattern as rest of the app)
+    const sourcePublicKey =
+      typeof window !== 'undefined' ? (localStorage.getItem('walletAddress') ?? '') : ''
+    const network: FreighterNetwork =
+      (typeof window !== 'undefined'
+        ? (localStorage.getItem('walletNetwork') as FreighterNetwork)
+        : null) ?? 'PUBLIC'
+
+    if (!sourcePublicKey) {
+      setError('No wallet connected. Please connect your wallet first.')
+      return
+    }
+
     setSending(true)
-    // Simulate send
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setSending(false)
-    onOpenChange(false)
-    // Reset form
-    setAmount('')
-    setAddress('')
+    try {
+      const result = await sendStellarP2P({
+        sourcePublicKey,
+        destination: address,
+        amount,
+        assetCode: currency,
+        network,
+      })
+
+      if (result.error) {
+        setError(result.error)
+        return
+      }
+
+      // Success — close modal and reset form
+      onOpenChange(false)
+      setAmount('')
+      setAddress('')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -79,7 +117,7 @@ export function SendModal({ open, onOpenChange }: SendModalProps) {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+                placeholder="GXXXXXX... (Stellar address)"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 className="flex-1 px-4 py-3 rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
@@ -103,6 +141,14 @@ export function SendModal({ open, onOpenChange }: SendModalProps) {
               </span>
             </div>
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              {error}
+            </div>
+          )}
 
           {/* Send Button */}
           <Button
