@@ -25,6 +25,7 @@ import { z } from 'zod'
 import { canWithdraw } from '@/lib/kyc/withdrawalLimitService'
 import { WithdrawalLimitError } from '@/lib/kyc/errors'
 import { isKycTier } from '@/lib/kyc/tiers'
+import { captureError, log } from '@/lib/observability'
 
 const RequestSchema = z.object({
   userId: z.string().min(1),
@@ -63,12 +64,28 @@ export async function POST(request: NextRequest) {
       result.remaining,
       result.resetAt
     )
+    log.warn('withdrawal.limit_exceeded', {
+      userId,
+      kycTier,
+      amountCents,
+      reason: result.reason,
+      remaining: result.remaining,
+    })
     return NextResponse.json(limitError.toResponseBody(), { status: 403 })
   }
 
   // Limit check passed — proceed with order creation.
   // In production: persist the order to the DB, trigger the settlement flow.
   const orderId = `OFF-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+
+  log.info('withdrawal.initiated', {
+    orderId,
+    asset,
+    chain,
+    amountCents,
+    kycTier,
+    remaining: result.remaining,
+  })
 
   return NextResponse.json(
     {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { KycSubmission } from '@/types/kyc'
 import { kycStore } from '@/lib/kyc/store'
+import { captureError, log } from '@/lib/observability'
 
 const bodySchema = z.object({
   idFront: z.string().min(100, 'ID front image is required'),
@@ -70,6 +71,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   kycStore.set(submissionId, submission)
+
+  log.info('kyc.submission.created', {
+    submissionId,
+    userId,
+    documentCount: submission.documents.length,
+  })
 
   // Simulate async verification process
   // In production, this would trigger a background job or webhook

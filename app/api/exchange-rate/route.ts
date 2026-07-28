@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { captureError } from '@/lib/observability'
 
 const COINGECKO_URL =
   'https://api.coingecko.com/api/v3/simple/price?ids=usd-coin,stellar&vs_currencies=ngn,kes,ghs,zar,ugx'
@@ -19,7 +20,10 @@ export async function GET() {
 
     const data = await response.json()
     return NextResponse.json(data)
-  } catch {
+  } catch (err) {
+    captureError(err, {
+      tags: { domain: 'rates', operation: 'exchange-rate-fetch' },
+    })
     return NextResponse.json({ error: 'Unable to fetch exchange rates' }, { status: 500 })
   }
 }

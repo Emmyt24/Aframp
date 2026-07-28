@@ -1,6 +1,7 @@
 import Server, { Asset, Memo, Networks, Operation, TransactionBuilder } from '@stellar/stellar-sdk'
 import { signTransactionWithFreighter } from '@/lib/wallet/freighter'
 import type { FreighterNetwork } from '@/lib/wallet'
+import { captureError, log } from '@/lib/observability'
 
 const HORIZON_URLS: Record<string, string> = {
   PUBLIC: 'https://horizon.stellar.org',
@@ -79,6 +80,20 @@ export async function sendStellarP2P(params: SendP2PParams): Promise<SendP2PResu
     return { txHash: result.hash }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Transaction failed'
+    captureError(err, {
+      tags: { domain: 'stellar', operation: 'p2p-transfer' },
+      extra: {
+        sourcePublicKey,
+        destination: destination.slice(0, 8) + '…', // partial – avoid full key in logs
+        assetCode,
+        network: network ?? 'PUBLIC',
+      },
+    })
+    log.error('stellar.p2p.failed', {
+      error: msg,
+      assetCode,
+      network: network ?? 'PUBLIC',
+    })
     return { txHash: '', error: msg }
   }
 }
