@@ -1,4 +1,4 @@
-import { promises as fs } from 'fs'
+import fs from 'fs'
 import {
   createNotification,
   getNotifications,
@@ -7,18 +7,9 @@ import {
   markAllNotificationsRead,
 } from '../notifications-store'
 
-const mockReadFile = jest.fn()
-const mockWriteFile = jest.fn()
-const mockMkdir = jest.fn()
-
-jest.mock('fs/promises', () => ({
-  readFile: (...args: unknown[]) => mockReadFile(...args),
-  writeFile: (...args: unknown[]) => mockWriteFile(...args),
-  mkdir: (...args: unknown[]) => mockMkdir(...args),
-}))
-
-// Silence unused import warning
-void (fs as unknown)
+const mockReadFile = jest.spyOn(fs.promises, 'readFile') as jest.MockedFunction<typeof fs.promises.readFile>
+const mockWriteFile = jest.spyOn(fs.promises, 'writeFile') as jest.MockedFunction<typeof fs.promises.writeFile>
+const mockMkdir = jest.spyOn(fs.promises, 'mkdir') as jest.MockedFunction<typeof fs.promises.mkdir>
 
 const BASE_ITEM = {
   id: 'notif-1',
