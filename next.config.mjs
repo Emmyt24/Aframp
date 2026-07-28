@@ -1,15 +1,19 @@
-import withPWAInit from 'next-pwa'
+import withPWA from 'next-pwa'
 import { withSentryConfig } from '@sentry/nextjs'
-
-const withPWA = withPWAInit({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-})
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // PWA configuration (next-pwa v2 reads options from the `pwa` key)
+  pwa: {
+    dest: 'public',
+    register: true,
+    // skipWaiting: false — do NOT force immediate service worker updates.
+    // A waiting SW activates only after the user dismisses the update banner
+    // (see components/pwa-update-banner.tsx), preventing in-flight payment
+    // flows from being interrupted.
+    skipWaiting: false,
+    disable: process.env.NODE_ENV === 'development',
+  },
   experimental: {
     cpus: 1,
     staticGenerationMaxConcurrency: 1,

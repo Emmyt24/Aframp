@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ArrowUp, ScanLine } from 'lucide-react'
+import { useBalanceContext } from '@/contexts/balance-context'
 
 interface SendModalProps {
   open: boolean
@@ -21,6 +22,11 @@ export function SendModal({ open, onOpenChange }: SendModalProps) {
   const [address, setAddress] = useState('')
   const [currency, setCurrency] = useState('cNGN')
   const [sending, setSending] = useState(false)
+
+  // #300: use real wallet balances instead of a hardcoded string
+  const { balances, loading: balanceLoading } = useBalanceContext()
+  const selectedBalance = balances.find((b) => b.symbol === currency)
+  const availableAmount = selectedBalance?.amount ?? 0
 
   const currencies = ['cNGN', 'BTC', 'ETH', 'XLM', 'USDT']
 
@@ -70,7 +76,11 @@ export function SendModal({ open, onOpenChange }: SendModalProps) {
                 ))}
               </select>
             </div>
-            <div className="text-xs text-muted-foreground">Balance: 2,450,000 cNGN</div>
+            <div className="text-xs text-muted-foreground">
+              {balanceLoading
+                ? 'Loading balance…'
+                : `Balance: ${availableAmount.toLocaleString()} ${currency}`}
+            </div>
           </div>
 
           {/* Address */}
