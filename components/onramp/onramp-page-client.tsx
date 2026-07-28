@@ -15,12 +15,13 @@ import {
 } from '@/components/ui/dialog'
 import { OnrampCalculator } from '@/components/onramp/onramp-calculator'
 import { RecentTransactions } from '@/components/onramp/recent-transactions'
+import { OnrampFeeSummary } from '@/components/onramp/onramp-fee-summary'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useOnrampForm } from '@/hooks/use-onramp-form'
 import { useWalletConnection } from '@/hooks/use-wallet-connection'
 import { OnrampTestUtils } from '@/components/onramp/onramp-test-utils'
 import type { CryptoAsset, FiatCurrency } from '@/types/onramp'
-import { formatCurrency, isValidStellarAddress } from '@/lib/calculations'
+import { isValidStellarAddress } from '@/lib/calculations'
 import type { OnrampOrder } from '@/types/onramp'
 import { Button } from '@/components/ui/button' // Added missing import for Button
 import { Skeleton } from '@/components/ui/skeleton'
@@ -211,13 +212,6 @@ export function OnrampPageClient() {
     setDisconnectModalOpen(true)
   }
 
-  const processingFeeLabel =
-    form.state.paymentMethod === 'bank_transfer'
-      ? 'FREE'
-      : form.state.paymentMethod === 'card'
-        ? `${formatCurrency(form.fees.processingFee, form.state.fiatCurrency)} (1.5%)`
-        : `${formatCurrency(form.fees.processingFee, form.state.fiatCurrency)} (0.5%)`
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -321,43 +315,14 @@ export function OnrampPageClient() {
             </div>
             <div className="rounded-3xl border border-border bg-card p-6">
               <h4 className="text-sm font-semibold text-foreground">Fee Summary</h4>
-              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center justify-between">
-                  <span>Processing fee</span>
-                  <span className="text-foreground">{processingFeeLabel}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Network fee</span>
-                  <span className="text-foreground">
-                    {formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}
-                  </span>
-                </div>
-                {!isReferralDiscountConsumed() && getAppliedReferralCode() && (
-                  <div className="flex items-center justify-between text-green-600 dark:text-green-400">
-                    <span>Referral discount (10%)</span>
-                    <span>
-                      −{formatCurrency(form.fees.totalFees * 0.1, form.state.fiatCurrency)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between border-t border-border pt-3 text-foreground">
-                  <span>Total cost</span>
-                  <span className="font-semibold">
-                    {formatCurrency(
-                      !isReferralDiscountConsumed() && getAppliedReferralCode()
-                        ? form.fees.totalCost - form.fees.totalFees * 0.1
-                        : form.fees.totalCost,
-                      form.state.fiatCurrency
-                    )}
-                  </span>
-                </div>
+              <div className="mt-3">
+                <OnrampFeeSummary
+                  fees={form.fees}
+                  fiatCurrency={form.state.fiatCurrency}
+                  paymentMethod={form.state.paymentMethod}
+                  showReferralLink
+                />
               </div>
-              <Link
-                href="/referral"
-                className="mt-4 block text-xs text-primary hover:underline"
-              >
-                🎁 Refer a friend → they get 10% off their first ramp
-              </Link>
             </div>
           </div>
         </div>

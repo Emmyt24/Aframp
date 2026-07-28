@@ -6,8 +6,9 @@ import { CurrencySelector } from '@/components/onramp/currency-selector'
 import { ExchangeRateDisplay } from '@/components/onramp/exchange-rate-display'
 import { PaymentMethodCard } from '@/components/onramp/payment-method-card'
 import { WalletDisplay } from '@/components/onramp/wallet-display'
+import { OnrampFeeSummary } from '@/components/onramp/onramp-fee-summary'
 import { Button } from '@/components/ui/button'
-import { formatCurrency, formatNumber } from '@/lib/calculations'
+import { formatNumber } from '@/lib/calculations'
 import { PaymentMethodGlyph } from '@/components/icons/finance-icons'
 import type { CryptoAsset, FiatCurrency, PaymentMethod } from '@/types/onramp'
 
@@ -87,13 +88,6 @@ export function OnrampCalculator({
   isValid,
   fees,
 }: OnrampCalculatorProps) {
-  const processingFeeLabel =
-    paymentMethod === 'bank_transfer'
-      ? 'FREE'
-      : paymentMethod === 'card'
-        ? `${formatCurrency(fees.processingFee, fiatCurrency)} (1.5%)`
-        : `${formatCurrency(fees.processingFee, fiatCurrency)} (0.5%)`
-
   return (
     <div className="rounded-3xl border border-border bg-card p-6 shadow-lg">
       <form
@@ -184,20 +178,11 @@ export function OnrampCalculator({
         />
 
         <div className="rounded-2xl border border-border bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
-          <div className="flex items-center justify-between">
-            <span>Processing fee</span>
-            <span className="font-medium text-foreground">{processingFeeLabel}</span>
-          </div>
-          <div className="mt-2 flex items-center justify-between">
-            <span>Network fee</span>
-            <span className="font-medium text-foreground">
-              {formatCurrency(fees.networkFee, fiatCurrency)}
-            </span>
-          </div>
-          <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-foreground">
-            <span className="font-medium">Total cost</span>
-            <span className="font-semibold">{formatCurrency(fees.totalCost, fiatCurrency)}</span>
-          </div>
+          <OnrampFeeSummary
+            fees={fees}
+            fiatCurrency={fiatCurrency}
+            paymentMethod={paymentMethod}
+          />
         </div>
 
         <div className="flex flex-col gap-2 text-xs text-muted-foreground">
