@@ -21,6 +21,7 @@ interface OnrampCalculatorProps {
   exchangeWarning?: string | null
   exchangeError?: string | null
   exchangeLoading?: boolean
+  exchangeSparkline?: number[]
   onRefreshRate: () => void
   onAmountChange: (value: string) => void
   onFiatChange: (value: FiatCurrency) => void
@@ -65,6 +66,7 @@ export function OnrampCalculator({
   exchangeWarning,
   exchangeError,
   exchangeLoading,
+  exchangeSparkline,
   onRefreshRate,
   onAmountChange,
   onFiatChange,
@@ -129,6 +131,7 @@ export function OnrampCalculator({
           error={exchangeError}
           isLoading={exchangeLoading}
           onRefresh={onRefreshRate}
+          sparkline={exchangeSparkline}
         />
 
         <div className="grid gap-4 md:grid-cols-[1fr_180px] md:items-end">
