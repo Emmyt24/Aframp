@@ -6,6 +6,7 @@ export type PriceAlertDirection = 'below' | 'above'
 
 export interface PriceAlertRule {
   id: string
+  userId?: string
   asset: 'cNGN'
   direction: PriceAlertDirection
   threshold: number
@@ -76,6 +77,7 @@ export async function addPriceAlertRule({
   direction,
   threshold,
   channels,
+  userId,
 }: Omit<PriceAlertRule, 'id' | 'asset' | 'createdAt' | 'lastTriggeredAt'>) {
   const store = await readPriceAlertStore()
   const newRule: PriceAlertRule = {
@@ -85,6 +87,7 @@ export async function addPriceAlertRule({
     threshold,
     channels,
     email,
+    userId,
     createdAt: Date.now(),
   }
 
@@ -151,7 +154,9 @@ ${rule.direction === 'below' ? 'The price has dropped below your configured thre
   if (channel === 'email') {
     await sendEmailNotification(rule.email, subject, message)
   } else {
-    await sendPushNotification(message)
+    // Pass userId so push is targeted to this user's devices only
+    const userId = (rule as PriceAlertRule & { userId?: string }).userId
+    await sendPushNotification(message, userId)
   }
 
   return {
@@ -174,10 +179,70 @@ export async function sendEmailNotification(email: string, subject: string, body
   return Promise.resolve()
 }
 
-export async function sendPushNotification(message: string) {
-  console.warn('Sending price alert push notification:')
-  console.warn(message)
-  return Promise.resolve()
+/**
+ * Send a Web Push notification to all subscribed devices for the user
+ * whose price alert was triggered.
+ *
+ * Falls back to a console warning when VAPID keys are not configured (e.g.
+ * in local development without push credentials).
+ */
+export async function sendPushNotification(
+  message: string,
+  /** Optional userId to target a specific user's subscriptions. */
+  userId?: string
+): Promise<void> {
+  // Guard: if VAPID keys are missing, log and return gracefully
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const privateKey = process.env.VAPID_PRIVATE_KEY
+
+  if (!publicKey || !privateKey) {
+    console.warn('[price-alerts] VAPID keys not configured — skipping push notification')
+    console.warn('[price-alerts] Message:', message)
+    return
+  }
+
+  try {
+    const { getAllSubscriptions, removeSubscription } = await import(
+      './notifications/push-subscriptions-store'
+    )
+    const { sendToSubscription } = await import('./notifications/push-sender')
+
+    let subscriptions = await getAllSubscriptions()
+
+    // If a userId is provided, filter to that user's subscriptions only
+    if (userId) {
+      subscriptions = subscriptions.filter((s) => s.userId === userId)
+    }
+
+    if (subscriptions.length === 0) {
+      console.warn('[price-alerts] No push subscriptions found')
+      return
+    }
+
+    const payload = {
+      title: 'Aframp Price Alert',
+      body: message,
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/badge-72x72.png',
+      tag: 'price-alert',
+      url: '/pricealert',
+    }
+
+    await Promise.allSettled(
+      subscriptions.map(async (stored) => {
+        try {
+          const result = await sendToSubscription(stored.subscription, payload)
+          if (result.gone) {
+            await removeSubscription(stored.userId, stored.subscription.endpoint!)
+          }
+        } catch (err) {
+          console.error('[price-alerts] Push delivery failed for user', stored.userId, err)
+        }
+      })
+    )
+  } catch (err) {
+    console.error('[price-alerts] sendPushNotification error', err)
+  }
 }
 
 async function getCngnPrice() {
