@@ -46,7 +46,7 @@ import { payerIdentity } from '@/lib/compliance/identity'
 import { resolveMarket, toUsdCents, UnsupportedMarketError } from '@/lib/compliance/markets'
 
 const bodySchema = z.object({
-  provider: z.enum(['mpesa', 'mtn_momo']),
+  provider: z.enum(['mpesa', 'mtn_momo', 'flutterwave']),
   phoneNumber: z
     .string()
     .regex(/^\+\d{7,15}$/, 'phoneNumber must be in E.164 format, e.g. +254712345678'),
