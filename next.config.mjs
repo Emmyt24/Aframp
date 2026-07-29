@@ -1,19 +1,20 @@
 import withPWAInit from 'next-pwa'
 import { withSentryConfig } from '@sentry/nextjs'
 
-const withPWA = withPWAInit({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-})
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    cpus: 1,
-    staticGenerationMaxConcurrency: 1,
-    staticGenerationMinPagesPerWorker: 1,
+    // Limit concurrency only in resource-constrained CI environments.
+    // Set CI_LOW_RESOURCES=1 in your CI pipeline to enable these caps;
+    // leave it unset for normal development and production builds so they
+    // use all available CPU cores.
+    ...(process.env.CI_LOW_RESOURCES
+      ? {
+          cpus: 1,
+          staticGenerationMaxConcurrency: 1,
+          staticGenerationMinPagesPerWorker: 1,
+        }
+      : {}),
   },
   images: {
     unoptimized: false,
@@ -21,6 +22,18 @@ const nextConfig = {
     minimumCacheTTL: 60,
   },
   output: 'standalone',
+  async redirects() {
+    return [
+      // /login and signup are the same flow (phone + OTP). Redirect /login to
+      // /signup so that 401-page CTAs and any external links don't dead-end on
+      // a 404 (issue #272).
+      {
+        source: '/login',
+        destination: '/signup',
+        permanent: false,
+      },
+    ]
+  },
   async headers() {
     const csp = [
       "default-src 'self'",
@@ -50,4 +63,16 @@ const nextConfig = {
   },
 }
 
-export default withSentryConfig(withPWA(nextConfig))
+// next-pwa@2.0.2 doesn't curry — it takes the full Next config (with PWA
+// options nested under `pwa`) and returns the final config directly.
+const configWithPWA = withPWAInit({
+  pwa: {
+    dest: 'public',
+    register: true,
+    skipWaiting: true,
+    disable: process.env.NODE_ENV === 'development',
+  },
+  ...nextConfig,
+})
+
+export default withSentryConfig(configWithPWA)

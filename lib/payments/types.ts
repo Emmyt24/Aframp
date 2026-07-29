@@ -9,6 +9,7 @@ export interface PaymentParams {
   accountReference: string
   transactionDesc: string
   externalId: string
+  email?: string // required by some providers (e.g. Flutterwave); synthesized from phone if omitted
 }
 
 export interface PaymentResult {
@@ -20,7 +21,7 @@ export interface PaymentResult {
 
 export type PaymentStatus = 'PENDING' | 'SUCCESSFUL' | 'FAILED' | 'CANCELLED' | 'INSUFFICIENT_FUNDS'
 
-export type MobileMoneyProviderName = 'mpesa' | 'mtn_momo'
+export type MobileMoneyProviderName = 'mpesa' | 'mtn_momo' | 'flutterwave'
 
 export interface MobileMoneyProvider {
   initiatePayment(params: PaymentParams): Promise<PaymentResult>
