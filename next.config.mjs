@@ -4,9 +4,17 @@ import { withSentryConfig } from '@sentry/nextjs'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    cpus: 1,
-    staticGenerationMaxConcurrency: 1,
-    staticGenerationMinPagesPerWorker: 1,
+    // Limit concurrency only in resource-constrained CI environments.
+    // Set CI_LOW_RESOURCES=1 in your CI pipeline to enable these caps;
+    // leave it unset for normal development and production builds so they
+    // use all available CPU cores.
+    ...(process.env.CI_LOW_RESOURCES
+      ? {
+          cpus: 1,
+          staticGenerationMaxConcurrency: 1,
+          staticGenerationMinPagesPerWorker: 1,
+        }
+      : {}),
   },
   typescript: {
     ignoreBuildErrors: true,
