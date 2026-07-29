@@ -22,6 +22,7 @@ import { OnrampTestUtils } from '@/components/onramp/onramp-test-utils'
 import type { CryptoAsset, FiatCurrency } from '@/types/onramp'
 import { formatCurrency, isValidStellarAddress } from '@/lib/calculations'
 import type { OnrampOrder } from '@/types/onramp'
+import { persistOrder } from '@/lib/orders/order-client'
 import { Button } from '@/components/ui/button' // Added missing import for Button
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -31,8 +32,6 @@ import {
   markReferralDiscountConsumed,
   setAppliedReferralCode,
 } from '@/lib/referral'
-
-const ORDER_KEY = 'onramp:latest-order'
 
 export function OnrampPageClient() {
   const router = useRouter()
