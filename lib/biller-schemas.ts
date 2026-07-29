@@ -12,6 +12,8 @@ export interface BillerField {
     pattern?: string
     minLength?: number
     maxLength?: number
+    /** Numeric minimum value (for type: 'number' fields) — compared numerically, not by string length */
+    min?: number
     message?: string
   }
   options?: { label: string; value: string }[]
@@ -40,6 +42,7 @@ export const zBillerFieldValidation = z.object({
   pattern: z.string().optional(),
   minLength: z.number().optional(),
   maxLength: z.number().optional(),
+  min: z.number().optional(),
   message: z.string().optional(),
 })
 
@@ -150,7 +153,7 @@ export const BILLER_SCHEMAS: Record<string, BillerSchema> = {
         placeholder: 'Enter amount',
         validation: {
           required: true,
-          minLength: 500,
+          min: 500,
           message: 'Minimum amount is ₦500',
         },
       },
@@ -248,7 +251,7 @@ export const BILLER_SCHEMAS: Record<string, BillerSchema> = {
         placeholder: 'Enter amount',
         validation: {
           required: true,
-          minLength: 10,
+          min: 10,
           message: 'Minimum amount is 10 KSh',
         },
       },
@@ -282,7 +285,7 @@ export const BILLER_SCHEMAS: Record<string, BillerSchema> = {
         placeholder: 'Enter amount',
         validation: {
           required: true,
-          minLength: 1000,
+          min: 1000,
           message: 'Minimum amount is ₦1,000',
         },
       },
