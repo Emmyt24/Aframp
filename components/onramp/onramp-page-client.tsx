@@ -148,6 +148,16 @@ export function OnrampPageClient() {
       return
     }
 
+    // Guard: refuse to create an order if the live exchange rate is unavailable.
+    // Using a stale or hardcoded fallback rate would expose users or the platform
+    // to incorrect pricing (see issue #271).
+    if (!data?.rate) {
+      alert(
+        'Exchange rate is currently unavailable. Please wait for the rate to load or refresh the page before proceeding.'
+      )
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -169,7 +179,7 @@ export function OnrampPageClient() {
         cryptoAsset: form.state.cryptoAsset,
         paymentMethod: form.state.paymentMethod,
         amount: form.amountValue,
-        exchangeRate: data?.rate || 1600, // Fallback rate for demo
+        exchangeRate: data.rate,
         cryptoAmount: form.cryptoAmount,
         fees: discountedFees,
         walletAddress: walletAddress,
