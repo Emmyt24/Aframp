@@ -8,6 +8,7 @@ import type {
   FiatCurrency,
 } from '@/types/onramp'
 import { formatRate } from '@/lib/calculations'
+import { recordDataUpdate } from '@/lib/offline/connectivity'
 
 const STORAGE_KEY = 'onramp:rates'
 const SPARKLINE_STORAGE_KEY = 'onramp:sparkline'
@@ -68,6 +69,7 @@ export function useExchangeRate(fiat: FiatCurrency, asset: CryptoAsset): Exchang
       if (!usdcPrice || !xlmPrice) return
 
       const result = buildRateResult(fiat, asset, usdcPrice, xlmPrice, source, payload.timestamp)
+      recordDataUpdate(result.lastUpdated)
 
       setState((prev) => ({
         ...prev,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { recordDataUpdate } from '@/lib/offline/connectivity'
 
 export function useEthPrice() {
   const [price, setPrice] = useState<number | null>(null)
@@ -29,7 +30,9 @@ export function useEthPrice() {
       }
 
       setPrice(ethPrice)
-      setLastUpdated(new Date())
+      const updatedAt = new Date()
+      setLastUpdated(updatedAt)
+      recordDataUpdate(updatedAt.getTime())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch ETH price')
     } finally {

@@ -16,6 +16,7 @@
  */
 
 import type { OrderKind, StoredOrder } from './types'
+import { queueOrderSync } from '@/lib/offline/order-sync-queue'
 
 /** Cache key for a single order — unchanged from the pre-server layout. */
 export function orderCacheKey(kind: OrderKind, orderId: string): string {
@@ -91,8 +92,14 @@ export async function persistOrder<T extends OrderWithStatus>(
         payload: order,
       }),
     })
+
+    if (!response.ok && response.status >= 500) {
+      queueOrderSync(kind, order, walletAddress)
+    }
+
     return response.ok
   } catch {
+    queueOrderSync(kind, order, walletAddress)
     return false
   }
 }
@@ -178,8 +185,13 @@ export async function patchOrder<T extends OrderWithStatus>(
       return persistOrder(kind, order, walletAddress)
     }
 
+    if (!response.ok && response.status >= 500) {
+      queueOrderSync(kind, order, walletAddress)
+    }
+
     return response.ok
   } catch {
+    queueOrderSync(kind, order, walletAddress)
     return false
   }
 }

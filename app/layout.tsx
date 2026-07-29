@@ -2,6 +2,7 @@ import type React from 'react'
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
+import OfflineBoundary from '@/components/error/OfflineBoundary'
 import { KycProvider } from '@/contexts/kyc-context'
 import { NotificationProvider } from '@/contexts/notification-context'
 import './globals.css'
@@ -50,10 +51,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <KycProvider>
             <NotificationProvider>
-              {children}
+              <OfflineBoundary>{children}</OfflineBoundary>
             </NotificationProvider>
           </KycProvider>
         </ThemeProvider>

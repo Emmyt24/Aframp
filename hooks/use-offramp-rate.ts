@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FiatCurrency } from '@/types/onramp'
 import type { OfframpAsset, OfframpChain } from '@/types/offramp'
+import { recordDataUpdate } from '@/lib/offline/connectivity'
 
 const SSE_URL = '/api/exchange-rate/stream'
 const MAX_SPARKLINE_POINTS = 30
@@ -53,6 +54,7 @@ export function useOfframpRate(
 
       const finalRate = baseRate * chainMultiplier
 
+      recordDataUpdate(payload.timestamp)
       setRate(finalRate)
       setLastUpdated(payload.timestamp)
       setCountdown(30)
