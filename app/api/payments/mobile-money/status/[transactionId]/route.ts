@@ -11,9 +11,9 @@ export async function GET(
   // Provider name is passed as a query param so the status endpoint is stateless
   const providerName = request.nextUrl.searchParams.get('provider') as MobileMoneyProviderName | null
 
-  if (!providerName || !['mpesa', 'mtn_momo'].includes(providerName)) {
+  if (!providerName || !['mpesa', 'mtn_momo', 'flutterwave'].includes(providerName)) {
     return NextResponse.json(
-      { error: 'provider query param is required and must be "mpesa" or "mtn_momo"' },
+      { error: 'provider query param is required and must be "mpesa", "mtn_momo", or "flutterwave"' },
       { status: 400 }
     )
   }
