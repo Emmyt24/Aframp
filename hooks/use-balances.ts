@@ -3,21 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { TokenBalance } from '@/types/balance'
 
-interface EthSymbol {
-  symbol: string
-  last: string | number
-  last_btc?: string | number
-  lowest?: string | number
-  highest?: string | number
-  date?: string
-  daily_change_percentage?: string | number
-  source_exchange?: string
-}
-
-interface EthPriceResponse {
-  status: string
-  symbols: EthSymbol[]
-}
 
 export function useBalances(walletAddress?: string) {
   // Initial balances (in a real app, these would come from wallet/API)
@@ -52,20 +37,31 @@ export function useBalances(walletAddress?: string) {
 
   // Fetch ETH balance from blockchain
   const fetchWalletEthBalance = useCallback(async (address: string) => {
+    const alchemyApiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+    if (!alchemyApiKey) {
+      console.warn(
+        '[use-balances] NEXT_PUBLIC_ALCHEMY_API_KEY is not set — skipping on-chain balance fetch. ' +
+          'Get a free key at https://www.alchemy.com and add it to your .env.local.'
+      )
+      return
+    }
+
     try {
-      // Using Infura free tier or similar RPC provider
-      const response = await fetch('https://eth-mainnet.g.alchemy.com/v2/demo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_getBalance',
-          params: [address, 'latest'],
-          id: 1,
-        }),
-      })
+      const response = await fetch(
+        `https://eth-mainnet.g.alchemy.com/v2/${alchemyApiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_getBalance',
+            params: [address, 'latest'],
+            id: 1,
+          }),
+        }
+      )
 
       const data = await response.json()
 
@@ -92,7 +88,9 @@ export function useBalances(walletAddress?: string) {
 
   const fetchEthPrice = useCallback(async () => {
     try {
-      const response = await fetch('https://kelly-musk.up.railway.app/api/eth-price', {
+      // Use the project's own /api/rates route (backed by CoinGecko) instead of
+      // a hardcoded personal server. The route returns { ethereum: { usd: number } }.
+      const response = await fetch('/api/rates', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -104,23 +102,10 @@ export function useBalances(walletAddress?: string) {
         throw new Error(`Failed to fetch ETH price: ${response.statusText}`)
       }
 
-      const data: EthPriceResponse = await response.json()
+      const data = await response.json() as { ethereum?: { usd?: number } }
 
-      let ethPrice: number | null = null
-
-      if (
-        data.status === 'success' &&
-        data.symbols &&
-        Array.isArray(data.symbols) &&
-        data.symbols.length > 0
-      ) {
-        const ethSymbol = data.symbols.find((s) => s.symbol === 'ETH') || data.symbols[0]
-
-        if (ethSymbol && ethSymbol.last !== undefined) {
-          ethPrice =
-            typeof ethSymbol.last === 'string' ? parseFloat(ethSymbol.last) : ethSymbol.last
-        }
-      }
+      const ethPrice: number | null =
+        typeof data?.ethereum?.usd === 'number' ? data.ethereum.usd : null
 
       if (ethPrice !== null && !isNaN(ethPrice)) {
         setBalances((prev) =>
