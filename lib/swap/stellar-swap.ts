@@ -1,5 +1,10 @@
-import Server, { Asset, Networks, Operation, TransactionBuilder } from '@stellar/stellar-sdk'
+import * as StellarSdk from '@stellar/stellar-sdk'
 import type { FreighterNetwork } from '@/lib/wallet'
+
+const { Asset, Networks, Operation, TransactionBuilder } = StellarSdk
+// Server is accessed as a named export under the default namespace in the Stellar SDK
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Server: new (url: string) => any = (StellarSdk as any).Horizon?.Server ?? (StellarSdk as any).Server
 
 const HORIZON_PUBLIC = 'https://horizon.stellar.org'
 const HORIZON_TESTNET = 'https://horizon-testnet.stellar.org'
@@ -16,7 +21,7 @@ export const SWAP_ASSETS = ['cNGN', 'USDC', 'XLM', 'cKES', 'cGHS'] as const
 export type SwapAsset = (typeof SWAP_ASSETS)[number]
 
 export interface SwapPath {
-  path: Asset[]
+  path: StellarSdk.Asset[]
   sourceAmount: string
   destinationAmount: string
 }
@@ -27,7 +32,7 @@ export interface SwapSimulation {
   fromAmount: string
   toAmount: string
   /** Best path found by Stellar DEX path-finding */
-  path: Asset[]
+  path: StellarSdk.Asset[]
   /** Minimum received after slippage */
   minReceived: string
   /** Effective exchange rate */
@@ -37,7 +42,7 @@ export interface SwapSimulation {
   slippagePct: number
 }
 
-function getAsset(code: SwapAsset): Asset {
+function getAsset(code: SwapAsset): StellarSdk.Asset {
   if (code === 'XLM') return Asset.native()
   const issuer = ASSET_ISSUERS[code]
   if (!issuer) throw new Error(`Unknown issuer for ${code}`)
@@ -49,21 +54,24 @@ function getHorizon(network: FreighterNetwork | null) {
 }
 
 /**
- * Simulate a swap using Stellar DEX strict-receive path payment.
- * Returns the best route and expected output — equivalent to 1inch/Jupiter quote.
+ * Find the optimal DEX route for a strict-send path payment.
+ *
+ * Queries Stellar Horizon's `/paths/strict-send` endpoint and returns all
+ * candidate paths sorted by best (highest) destination amount first.
+ *
+ * This is the routing layer — call {@link simulateSwap} for a full quote
+ * including slippage math, or call this directly when you need the raw paths.
  */
-export async function simulateSwap(
+export async function findSwapPath(
   fromAsset: SwapAsset,
   toAsset: SwapAsset,
   fromAmount: string,
-  slippagePct: number,
   network: FreighterNetwork | null
-): Promise<SwapSimulation> {
+): Promise<SwapPath[]> {
   const horizonUrl = getHorizon(network)
   const src = getAsset(fromAsset)
   const dest = getAsset(toAsset)
 
-  // Use Stellar's path-payment strict-send finder
   const params = new URLSearchParams({
     source_asset_type: src.isNative() ? 'native' : 'credit_alphanum4',
     ...(src.isNative() ? {} : { source_asset_code: src.getCode(), source_asset_issuer: src.getIssuer() }),
@@ -78,30 +86,52 @@ export async function simulateSwap(
   const data = await res.json()
   const records: Array<{
     destination_amount: string
+    source_amount: string
     path: Array<{ asset_type: string; asset_code?: string; asset_issuer?: string }>
   }> = data._embedded?.records ?? []
 
   if (records.length === 0) throw new Error('No swap path found for this pair')
 
-  // Best path = highest destination amount
-  const best = records.reduce((a, b) =>
-    parseFloat(a.destination_amount) >= parseFloat(b.destination_amount) ? a : b
-  )
+  // Map to our SwapPath type and sort best (highest dest amount) first
+  const paths: SwapPath[] = records.map((r) => ({
+    sourceAmount: r.source_amount,
+    destinationAmount: r.destination_amount,
+    path: r.path.map((p) =>
+      p.asset_type === 'native' ? Asset.native() : new Asset(p.asset_code!, p.asset_issuer!)
+    ),
+  }))
 
-  const toAmount = best.destination_amount
+  paths.sort((a, b) => parseFloat(b.destinationAmount) - parseFloat(a.destinationAmount))
+
+  return paths
+}
+
+/**
+ * Simulate a swap using Stellar DEX strict-receive path payment.
+ * Returns the best route and expected output — equivalent to 1inch/Jupiter quote.
+ */
+export async function simulateSwap(
+  fromAsset: SwapAsset,
+  toAsset: SwapAsset,
+  fromAmount: string,
+  slippagePct: number,
+  network: FreighterNetwork | null
+): Promise<SwapSimulation> {
+  // Use findSwapPath to get the optimal DEX route
+  const paths = await findSwapPath(fromAsset, toAsset, fromAmount, network)
+
+  // Best path is first after sorting
+  const best = paths[0]
+  const toAmount = best.destinationAmount
   const minReceived = (parseFloat(toAmount) * (1 - slippagePct / 100)).toFixed(7)
   const rate = (parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(7)
-
-  const path = best.path.map((p) =>
-    p.asset_type === 'native' ? Asset.native() : new Asset(p.asset_code!, p.asset_issuer!)
-  )
 
   return {
     fromAsset,
     toAsset,
     fromAmount,
     toAmount,
-    path,
+    path: best.path,
     minReceived,
     rate,
     fee: '100', // base fee in stroops
@@ -110,7 +140,8 @@ export async function simulateSwap(
 }
 
 /**
- * Build a path-payment strict-send XDR for signing via Freighter.
+ * Build a PathPaymentStrictSend XDR for signing via Freighter.
+ * Uses the optimal path from simulateSwap / findSwapPath.
  */
 export async function buildSwapXdr(
   sourcePublicKey: string,
