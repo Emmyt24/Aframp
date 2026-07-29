@@ -23,7 +23,7 @@ export function KycForm({ onComplete }: KycFormProps) {
       setStep('submitted')
     },
   })
-  const { updateKycStatus, setSubmissionId } = useKyc()
+  const { kycStatus, updateKycStatus, setSubmissionId } = useKyc()
   const { checkStatus } = useKycStatusPolling({
     submissionId: state.submissionId,
     onStatusChange: (status) => {
@@ -76,7 +76,7 @@ export function KycForm({ onComplete }: KycFormProps) {
 
         <div className="space-y-4">
           <KycStatusDisplay
-            status={state.submissionId ? 'pending' : 'pending'}
+            status={kycStatus ?? 'pending'}
             isPolling={true}
           />
 
