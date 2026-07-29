@@ -26,11 +26,10 @@ import { Button } from '@/components/ui/button' // Added missing import for Butt
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   getAppliedReferralCode,
-  isReferralDiscountConsumed,
   calcReferralDiscount,
-  markReferralDiscountConsumed,
   setAppliedReferralCode,
 } from '@/lib/referral'
+import { useReferral } from '@/hooks/use-referral'
 
 const ORDER_KEY = 'onramp:latest-order'
 
@@ -49,6 +48,8 @@ export function OnrampPageClient() {
   } =
     useWalletConnection()
   const walletConnected = Boolean(address) || connected || storeConnected || Boolean(publicKey)
+  const referralWalletAddress = address || publicKey || ''
+  const { discountActive, discountConsumed, consumeDiscount } = useReferral(referralWalletAddress)
   const [walletModalOpen, setWalletModalOpen] = useState(false)
   const [disconnectModalOpen, setDisconnectModalOpen] = useState(false)
   const [rateOverride, setRateOverride] = useState(0)
@@ -85,10 +86,10 @@ export function OnrampPageClient() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const refCode = params.get('ref')
-    if (refCode && !getAppliedReferralCode() && !isReferralDiscountConsumed()) {
+    if (refCode && !getAppliedReferralCode() && !discountConsumed) {
       setAppliedReferralCode(refCode.toUpperCase())
     }
-  }, [])
+  }, [discountConsumed])
 
   // Only show modal if definitely not connected after loading
   useEffect(() => {
@@ -121,7 +122,6 @@ export function OnrampPageClient() {
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   // Show the confirmation summary first; the order is only created after
   // the user explicitly confirms in the dialog.
@@ -151,9 +151,15 @@ export function OnrampPageClient() {
     setIsSubmitting(true)
 
     try {
-      // Apply referral discount (10% off fees) on first ramp
+      // Apply referral discount (10% off fees) on first ramp. Consumption is
+      // reserved server-side up front so the one-time discount can't be
+      // replayed by racing requests or clearing client-side state.
       const referralCode = getAppliedReferralCode()
-      const hasDiscount = !!referralCode && !isReferralDiscountConsumed()
+      let hasDiscount = false
+      if (referralCode && discountActive) {
+        const consumeError = await consumeDiscount()
+        hasDiscount = !consumeError
+      }
       const reward = hasDiscount ? calcReferralDiscount(form.fees.totalFees) : null
       const discountedFees = reward
         ? {
@@ -190,8 +196,6 @@ export function OnrampPageClient() {
 
       const result = await response.json()
       const order: OnrampOrder = result.order
-
-      if (hasDiscount) markReferralDiscountConsumed()
 
       localStorage.setItem(ORDER_KEY, JSON.stringify(order))
       localStorage.setItem(`onramp:order:${order.id}`, JSON.stringify(order))
@@ -332,7 +336,7 @@ export function OnrampPageClient() {
                     {formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}
                   </span>
                 </div>
-                {!isReferralDiscountConsumed() && getAppliedReferralCode() && (
+                {discountActive && (
                   <div className="flex items-center justify-between text-green-600 dark:text-green-400">
                     <span>Referral discount (10%)</span>
                     <span>
@@ -344,7 +348,7 @@ export function OnrampPageClient() {
                   <span>Total cost</span>
                   <span className="font-semibold">
                     {formatCurrency(
-                      !isReferralDiscountConsumed() && getAppliedReferralCode()
+                      discountActive
                         ? form.fees.totalCost - form.fees.totalFees * 0.1
                         : form.fees.totalCost,
                       form.state.fiatCurrency
