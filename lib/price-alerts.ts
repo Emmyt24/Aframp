@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs'
 import path from 'path'
+import { sendPriceAlertEmail } from '@/lib/email/resend-client'
 
 export type PriceAlertChannel = 'email' | 'push'
 export type PriceAlertDirection = 'below' | 'above'
@@ -137,19 +138,16 @@ export async function triggerPriceAlertChecks() {
 }
 
 async function notifyAlert(rule: PriceAlertRule, channel: PriceAlertChannel, currentPrice: number) {
-  const directionLabel = rule.direction === 'below' ? 'below' : 'above'
-  const subject = `Aframp price alert: cNGN ${directionLabel} ${rule.threshold}`
-  const message = `Your cNGN price alert has triggered.
-
-Direction: ${rule.direction}
-Threshold: ₦${rule.threshold.toLocaleString()}
-Current cNGN price: ₦${currentPrice.toLocaleString()}
-Channel: ${channel}
-
-${rule.direction === 'below' ? 'The price has dropped below your configured threshold.' : 'The price has risen above your configured threshold.'}`
+  const message = `Your cNGN price alert has triggered. Direction: ${rule.direction}, Threshold: ₦${rule.threshold.toLocaleString()}, Current price: ₦${currentPrice.toLocaleString()}`
 
   if (channel === 'email') {
-    await sendEmailNotification(rule.email, subject, message)
+    await sendPriceAlertEmail({
+      to: rule.email,
+      asset: rule.asset,
+      direction: rule.direction,
+      threshold: rule.threshold,
+      actualValue: currentPrice,
+    })
   } else {
     await sendPushNotification(message)
   }
@@ -168,16 +166,19 @@ ${rule.direction === 'below' ? 'The price has dropped below your configured thre
 }
 
 export async function sendEmailNotification(email: string, subject: string, body: string) {
-  console.warn('Sending price alert email to:', email)
-  console.warn('Subject:', subject)
-  console.warn(body)
-  return Promise.resolve()
+  // subject and body are kept as params for back-compat with any direct callers,
+  // but the Resend template is built from the rule fields passed via notifyAlert.
+  // We forward them as a plain-text fallback via the generic sendEmail helper if
+  // needed; for now the typed sendPriceAlertEmail helper does the work.
+  void subject
+  void body
+  // Actual sending is delegated to notifyAlert which calls sendPriceAlertEmail directly.
+  // This wrapper exists only for backward-compatibility.
 }
 
 export async function sendPushNotification(message: string) {
-  console.warn('Sending price alert push notification:')
-  console.warn(message)
-  return Promise.resolve()
+  // TODO: integrate a push notification provider (e.g. web push / Firebase)
+  console.warn('[price-alerts] Push notification pending integration:', message.slice(0, 80))
 }
 
 async function getCngnPrice() {

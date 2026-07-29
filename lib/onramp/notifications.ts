@@ -1,4 +1,21 @@
+/**
+ * lib/onramp/notifications.ts
+ *
+ * Sends transactional emails for onramp order lifecycle events via Resend.
+ * Previously these were console.warn stubs — this module now delivers real
+ * emails using the helpers in lib/email/resend-client.ts.
+ *
+ * Callers must supply a valid recipient email address.  The helper
+ * `notifyOrderUpdate` is the recommended entry point for most use-cases.
+ */
+
 import { OnrampOrder } from '@/types/onramp'
+import {
+  sendOrderConfirmationEmail,
+  sendPaymentReceivedEmail,
+  sendTransferCompleteEmail,
+  sendTransactionFailedEmail,
+} from '@/lib/email/resend-client'
 
 export interface NotificationData {
   orderId: string
@@ -8,113 +25,71 @@ export interface NotificationData {
   cryptoAmount?: number
   cryptoAsset?: string
   transactionHash?: string
+  /** Recipient email address — required for real delivery. */
+  email?: string
 }
 
-export function sendEmailNotification(type: string, data: NotificationData): Promise<void> {
-  // This would integrate with your email service (SendGrid, Resend, etc.)
-  const { subject, message } = getDetailedNotificationMessage(type, data)
+// ── Public API ───────────────────────────────────────────────────────────────
 
-  console.warn(`Email notification: ${type}`)
-  console.warn(`Subject: ${subject}`)
-  console.warn(`Message: ${message}`)
+/**
+ * Sends a transactional email for the given order event type.
+ *
+ * @param type  - One of: 'order_created' | 'payment_received' | 'transfer_complete' | 'transaction_failed'
+ * @param data  - Order data including recipient email
+ */
+export async function sendEmailNotification(type: string, data: NotificationData): Promise<void> {
+  const {
+    orderId,
+    amount = 0,
+    currency = 'NGN',
+    cryptoAmount = 0,
+    cryptoAsset = 'cNGN',
+    transactionHash,
+    email,
+  } = data
 
-  // Simulate API call to email service
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.warn(`✅ Email sent for ${type}`)
-      resolve()
-    }, 1000)
-  })
-}
+  if (!email) {
+    console.warn(
+      `[notifications] sendEmailNotification(${type}): no recipient email provided — skipping.`
+    )
+    return
+  }
 
-export function sendSMSNotification(type: string, data: NotificationData): Promise<void> {
-  // This would integrate with Twilio or similar SMS service
-  const { message } = getDetailedNotificationMessage(type, data)
-
-  console.warn(`SMS notification: ${type}`)
-  console.warn(`Message: ${message.substring(0, 160)}...`) // SMS character limit
-
-  // Simulate API call to SMS service
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      console.warn(`✅ SMS sent for ${type}`)
-      resolve()
-    }, 1000)
-  })
-}
-
-function getDetailedNotificationMessage(
-  type: string,
-  data: NotificationData
-): { subject: string; message: string } {
-  const { orderId, status, amount, currency, cryptoAmount, cryptoAsset, transactionHash } = data
+  const base = { to: email, orderId, amount, currency, cryptoAmount, cryptoAsset }
 
   switch (type) {
     case 'order_created':
-      return {
-        subject: `AFRAMP Order Created - #${orderId.slice(-8).toUpperCase()}`,
-        message: `Your order #ONR-${orderId.slice(-8).toUpperCase()} is waiting for payment. 
-        
-Amount: ${amount?.toLocaleString()} ${currency}
-Asset: ${cryptoAmount?.toFixed(2)} ${cryptoAsset}
-Status: ${status.toUpperCase()}
-
-Complete your payment to receive your ${cryptoAsset} tokens.
-
-View order: https://aframp.com/onramp/payment?order=${orderId}`,
-      }
+      await sendOrderConfirmationEmail(base)
+      break
 
     case 'payment_received':
-      return {
-        subject: `Payment Confirmed - Processing Your ${cryptoAsset}`,
-        message: `Payment confirmed! Processing your ${cryptoAmount?.toFixed(2)} ${cryptoAsset}.
-
-Order: #ONR-${orderId.slice(-8).toUpperCase()}
-Amount Paid: ${amount?.toLocaleString()} ${currency}
-Status: Processing
-
-Your ${cryptoAsset} will be sent to your wallet shortly.`,
-      }
+      await sendPaymentReceivedEmail(base)
+      break
 
     case 'transfer_complete':
-      return {
-        subject: `🎉 Transaction Complete - ${cryptoAmount?.toFixed(2)} ${cryptoAsset} Received!`,
-        message: `Congratulations! Your transaction is complete.
-
-✅ ${cryptoAmount?.toFixed(2)} ${cryptoAsset} sent to your wallet
-💰 Amount paid: ${amount?.toLocaleString()} ${currency}
-🔗 Transaction hash: ${transactionHash}
-⏱️ Total time: 3 minutes 42 seconds
-
-View on Stellar Explorer: https://stellar.expert/explorer/public/tx/${transactionHash}
-Download receipt: https://aframp.com/onramp/success?order=${orderId}
-
-Thank you for using AFRAMP!`,
-      }
+      await sendTransferCompleteEmail({ ...base, transactionHash })
+      break
 
     case 'transaction_failed':
-      return {
-        subject: `Transaction Failed - Order #${orderId.slice(-8).toUpperCase()}`,
-        message: `We encountered an issue processing your transaction.
-
-Order: #ONR-${orderId.slice(-8).toUpperCase()}
-Amount: ${amount?.toLocaleString()} ${currency}
-Status: Failed
-
-Please contact our support team for assistance:
-Email: support@aframp.com
-Include your order ID in your message.
-
-We apologize for the inconvenience.`,
-      }
+      await sendTransactionFailedEmail(base)
+      break
 
     default:
-      return {
-        subject: `AFRAMP Order Update - #${orderId.slice(-8).toUpperCase()}`,
-        message: `Your order status has been updated to: ${status.toUpperCase()}`,
-      }
+      console.warn(`[notifications] Unknown notification type: ${type}`)
   }
 }
+
+/**
+ * SMS notifications are handled by a separate provider (e.g. Twilio).
+ * This stub is preserved to avoid breaking callers while SMS integration
+ * is pending.
+ */
+export async function sendSMSNotification(type: string, data: NotificationData): Promise<void> {
+  // TODO: integrate Twilio or Africa's Talking for SMS
+  console.warn(`[notifications] SMS notification pending integration — type: ${type}`)
+}
+
+// ── Notification copy (used in push / in-app notifications) ─────────────────
 
 export function getNotificationMessage(type: string, order: OnrampOrder): string {
   switch (type) {
@@ -125,13 +100,22 @@ export function getNotificationMessage(type: string, order: OnrampOrder): string
     case 'transfer_complete':
       return `${order.cryptoAmount.toFixed(2)} ${order.cryptoAsset} sent to your wallet`
     case 'transaction_failed':
-      return `Payment issue with order #${order.id.slice(-8).toUpperCase()} - contact support`
+      return `Payment issue with order #${order.id.slice(-8).toUpperCase()} — contact support`
     default:
       return 'AFRAMP transaction update'
   }
 }
 
-export async function notifyOrderUpdate(order: OnrampOrder, type: string) {
+// ── Convenience wrapper ──────────────────────────────────────────────────────
+
+/**
+ * Sends email (and optionally SMS) notifications for an order lifecycle event.
+ *
+ * @param order  - The full OnrampOrder object
+ * @param type   - Notification type key
+ * @param email  - Recipient email address (fetched from auth session / user record by the caller)
+ */
+export async function notifyOrderUpdate(order: OnrampOrder, type: string, email?: string) {
   const data: NotificationData = {
     orderId: order.id,
     status: order.status,
@@ -140,15 +124,16 @@ export async function notifyOrderUpdate(order: OnrampOrder, type: string) {
     cryptoAmount: order.cryptoAmount,
     cryptoAsset: order.cryptoAsset,
     transactionHash: order.transactionHash,
+    email,
   }
 
   try {
     await Promise.all([
       sendEmailNotification(type, data),
-      // Uncomment to enable SMS
-      // sendSMSNotification(type, data)
+      // Uncomment to enable SMS once a provider is integrated:
+      // sendSMSNotification(type, data),
     ])
   } catch (error) {
-    console.error('Failed to send notifications:', error)
+    console.error('[notifications] Failed to send notifications:', error)
   }
 }
