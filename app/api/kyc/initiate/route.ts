@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { KycSubmission } from '@/types/kyc'
-import { kycStore } from '@/lib/kyc/store'
+import { getKycSubmission, setKycSubmission } from '@/lib/kyc/store'
 
 const bodySchema = z.object({
   idFront: z.string().min(100, 'ID front image is required'),
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     expiresAt,
   }
 
-  kycStore.set(submissionId, submission)
+  await setKycSubmission(submissionId, submission)
 
   // Simulate async verification process
   // In production, this would trigger a background job or webhook
@@ -94,8 +94,8 @@ function simulateVerification(submissionId: string): void {
   const delay = 5000 + Math.random() * 10000
   const shouldApprove = Math.random() > 0.15
 
-  setTimeout(() => {
-    const submission = kycStore.get(submissionId)
+  setTimeout(async () => {
+    const submission = await getKycSubmission(submissionId)
     if (!submission) return
 
     submission.status = shouldApprove ? 'approved' : 'rejected'
@@ -106,6 +106,6 @@ function simulateVerification(submissionId: string): void {
       submission.verificationNotes = 'Document quality insufficient. Please resubmit with clearer images.'
     }
 
-    kycStore.set(submissionId, submission)
+    await setKycSubmission(submissionId, submission)
   }, delay)
 }

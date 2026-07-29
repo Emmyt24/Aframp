@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { BillerSchema } from '@/lib/biller-schemas'
+import { csrfHeaders } from '@/lib/security/csrf-client'
 import {
   PaymentMethod,
   PaymentMethodSelector,
@@ -121,7 +122,7 @@ export function PaymentForm({ schema, countryCode }: PaymentFormProps) {
         // Initiate mobile money payment
         const initiateRes = await fetch('/api/payments/mobile-money/initiate', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
           body: JSON.stringify({
             provider: mobileMoneyDetails.provider,
             phoneNumber: mobileMoneyDetails.phoneNumber,

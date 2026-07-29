@@ -22,6 +22,7 @@ import { OnrampTestUtils } from '@/components/onramp/onramp-test-utils'
 import type { CryptoAsset, FiatCurrency } from '@/types/onramp'
 import { formatCurrency, isValidStellarAddress } from '@/lib/calculations'
 import type { OnrampOrder } from '@/types/onramp'
+import { csrfHeaders } from '@/lib/security/csrf-client'
 import { Button } from '@/components/ui/button' // Added missing import for Button
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -180,6 +181,7 @@ export function OnrampPageClient() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...csrfHeaders(),
         },
         body: JSON.stringify(orderData),
       })
