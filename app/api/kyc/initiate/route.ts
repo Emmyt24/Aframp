@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { KycSubmission } from '@/types/kyc'
 import { kycStore } from '@/lib/kyc/store'
+import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth/session'
 
 const bodySchema = z.object({
   idFront: z.string().min(100, 'ID front image is required'),
@@ -14,6 +15,11 @@ function generateSubmissionId(): string {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const session = verifySessionToken(request.cookies.get(SESSION_COOKIE)?.value)
+  if (!session) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
   let body: unknown
   try {
     body = await request.json()
@@ -31,9 +37,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const { idFront, idBack, selfie } = parsed.data
 
-  // Extract userId from wallet address in request headers or body
-  // In production, this would come from authenticated session
-  const userId = request.headers.get('x-user-id') || 'user_' + Math.random().toString(36).substr(2, 9)
+  const userId = session.userId
 
   const submissionId = generateSubmissionId()
   const now = Date.now()

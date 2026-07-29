@@ -17,23 +17,34 @@ export function SignupClient() {
   const [otp, setOtp] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSendOtp = (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     if (phoneNumber.length < 10) {
       toast.error('Please enter a valid phone number')
       return
     }
-    
+
     setIsLoading(true)
-    // Simulate sending OTP
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      const response = await fetch('/api/auth/otp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to send verification code')
+      }
       setStep('otp')
       toast.success('OTP sent to ' + phoneNumber)
-    }, 1000)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send verification code')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     if (otp.length < 6) {
       toast.error('Please enter a valid 6-digit OTP')
@@ -41,15 +52,26 @@ export function SignupClient() {
     }
 
     setIsLoading(true)
-    // Simulate verifying OTP
-    setTimeout(() => {
-      setIsLoading(false)
+    try {
+      const response = await fetch('/api/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber, otp }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || 'Verification failed')
+      }
       if (typeof window !== 'undefined') {
         localStorage.setItem('isVerified', 'true')
       }
       toast.success('Successfully verified!')
       router.push('/feature-highlights')
-    }, 1000)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Verification failed')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

@@ -104,18 +104,17 @@ export async function verifyAccountNumber(
   bankCode: string,
   accountNumber: string
 ): Promise<string> {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 1500))
+  const response = await fetch(
+    `/api/bank/verify?accountNumber=${encodeURIComponent(accountNumber)}&bankCode=${encodeURIComponent(bankCode)}`
+  )
 
-  if (accountNumber === '0123456789') {
-    return 'CHUKWUEMEKA OKAFOR'
+  const result = await response.json().catch(() => null)
+
+  if (!response.ok || !result?.accountName) {
+    throw new Error(result?.error || 'Invalid account number or verification failed')
   }
 
-  if (accountNumber.length === 10) {
-    return 'JOHN DOE' // Default mock name for any 10 digit number
-  }
-
-  throw new Error('Invalid account number or verification failed')
+  return result.accountName
 }
 
 export function saveAccount(account: Omit<BankAccount, 'id'>): BankAccount {
