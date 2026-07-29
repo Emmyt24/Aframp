@@ -4,7 +4,11 @@ import * as React from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Landmark, ShieldCheck, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { BankAccount } from '@/lib/offramp/bank-service'
+import {
+  BankAccount,
+  getOfframpFormCurrency,
+  setSelectedOfframpAccount,
+} from '@/lib/offramp/bank-service'
 import { BankAccountForm } from '@/components/offramp/bank-account-form'
 import { KYCSignature } from '@/components/offramp/kyc-signature'
 import { SavedAccounts } from '@/components/offramp/saved-accounts'
@@ -15,6 +19,7 @@ import { useOfframpOrder } from '@/hooks/use-offramp-order'
 export function OfframpBankDetailsClient() {
   const [step, setStep] = React.useState<'select' | 'verify' | 'sign'>('select')
   const [selectedAccount, setSelectedAccount] = React.useState<BankAccount | null>(null)
+  const [orderCurrency, setOrderCurrency] = React.useState<FiatCurrency | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -24,14 +29,27 @@ export function OfframpBankDetailsClient() {
   const { order } = useOfframpOrder(searchParams.get('order'))
   const signatureAmount = order?.fiatAmount ?? MOCK_ORDER.fiatAmount
 
+  // The currency the customer priced their withdrawal in on the calculator.
+  // Read after mount because it lives in localStorage, which the server render
+  // cannot see. Preselects the payout country so a KES withdrawal does not open
+  // on a Nigerian bank list.
+  React.useEffect(() => {
+    setOrderCurrency(getOfframpFormCurrency() ?? (MOCK_ORDER.fiatCurrency as FiatCurrency))
+  }, [])
+
+  const defaultCountry = orderCurrency
+    ? (countryForCurrency(orderCurrency)?.code ?? DEFAULT_OFFRAMP_COUNTRY)
+    : DEFAULT_OFFRAMP_COUNTRY
+
   const handleAccountSelect = (account: BankAccount) => {
     setSelectedAccount(account)
+    // Carried forward so the review step settles to this account, in its currency.
+    setSelectedOfframpAccount(account)
     setStep('sign')
   }
 
   const handleVerified = (account: BankAccount) => {
-    setSelectedAccount(account)
-    setStep('sign')
+    handleAccountSelect(account)
   }
 
   const handleSigned = (_signature: string) => {
@@ -118,11 +136,15 @@ export function OfframpBankDetailsClient() {
                 </div>
                 <h2 className="text-xl font-bold">New Bank Account</h2>
                 <p className="text-sm text-muted-foreground">
-                  Enter your Nigerian bank account details.
+                  Choose your payout country and enter your bank account details.
                 </p>
               </div>
 
-              <BankAccountForm onVerified={handleVerified} />
+              <BankAccountForm
+                onVerified={handleVerified}
+                defaultCountry={defaultCountry}
+                orderCurrency={orderCurrency ?? undefined}
+              />
 
               <Button
                 variant="ghost"
