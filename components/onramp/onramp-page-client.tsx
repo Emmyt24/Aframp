@@ -53,7 +53,7 @@ export function OnrampPageClient() {
   const [rateOverride, setRateOverride] = useState(0)
 
   const form = useOnrampForm(rateOverride, walletConnected)
-  const { data, countdown, warning, error, isLoading, displayRate, refresh } = useExchangeRate(
+  const { data, countdown, warning, error, isLoading, displayRate, refresh, sparkline } = useExchangeRate(
     form.state.fiatCurrency,
     form.state.cryptoAsset
   )
@@ -282,6 +282,7 @@ export function OnrampPageClient() {
             exchangeWarning={warning}
             exchangeError={error}
             exchangeLoading={isLoading}
+            exchangeSparkline={sparkline}
             onRefreshRate={refresh}
             onAmountChange={form.setAmountInput}
             onFiatChange={(value) => form.setFiatCurrency(value as FiatCurrency)}
