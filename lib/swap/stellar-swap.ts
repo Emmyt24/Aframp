@@ -4,12 +4,28 @@ import type { FreighterNetwork } from '@/lib/wallet'
 const HORIZON_PUBLIC = 'https://horizon.stellar.org'
 const HORIZON_TESTNET = 'https://horizon-testnet.stellar.org'
 
-// Known issuers — override via NEXT_PUBLIC_ env vars
-const ASSET_ISSUERS: Record<string, string> = {
-  cNGN: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_CNGN_ISSUER) || 'GAHJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3TNFWQQE',
-  USDC: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_USDC_ISSUER) || 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
-  cKES: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_CKES_ISSUER) || '',
-  cGHS: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_CGHS_ISSUER) || '',
+// Asset issuers are required env vars — no hardcoded fallbacks.
+// Missing values in any environment will cause swaps to target the wrong asset or fail.
+// Add NEXT_PUBLIC_CNGN_ISSUER and NEXT_PUBLIC_USDC_ISSUER to your .env.local file.
+function requireIssuer(envVar: string, assetCode: string): string {
+  const value = typeof process !== 'undefined' ? process.env[envVar] : undefined
+  if (!value) {
+    throw new Error(
+      `${envVar} is not set. ` +
+        `Add it to your .env.local file to enable ${assetCode} swaps. ` +
+        'Use the testnet issuer for development or contact the AFRAMP team for the production address.'
+    )
+  }
+  return value
+}
+
+// Known issuers — configured entirely via NEXT_PUBLIC_ env vars.
+// cKES and cGHS issuers are optional and only validated when those assets are actually used.
+const ASSET_ISSUERS: Record<string, string | undefined> = {
+  cNGN: typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_CNGN_ISSUER : undefined,
+  USDC: typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_USDC_ISSUER : undefined,
+  cKES: typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_CKES_ISSUER : undefined,
+  cGHS: typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_CGHS_ISSUER : undefined,
 }
 
 export const SWAP_ASSETS = ['cNGN', 'USDC', 'XLM', 'cKES', 'cGHS'] as const
@@ -39,6 +55,8 @@ export interface SwapSimulation {
 
 function getAsset(code: SwapAsset): Asset {
   if (code === 'XLM') return Asset.native()
+  if (code === 'cNGN') return new Asset(code, requireIssuer('NEXT_PUBLIC_CNGN_ISSUER', code))
+  if (code === 'USDC') return new Asset(code, requireIssuer('NEXT_PUBLIC_USDC_ISSUER', code))
   const issuer = ASSET_ISSUERS[code]
   if (!issuer) throw new Error(`Unknown issuer for ${code}`)
   return new Asset(code, issuer)
