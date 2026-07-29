@@ -25,6 +25,18 @@ const nextConfig = {
     minimumCacheTTL: 60,
   },
   output: 'standalone',
+  async redirects() {
+    return [
+      // /login and signup are the same flow (phone + OTP). Redirect /login to
+      // /signup so that 401-page CTAs and any external links don't dead-end on
+      // a 404 (issue #272).
+      {
+        source: '/login',
+        destination: '/signup',
+        permanent: false,
+      },
+    ]
+  },
   async headers() {
     return [
       {
