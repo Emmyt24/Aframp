@@ -1,25 +1,35 @@
 import { OnrampOrder } from '@/types/onramp'
 
 export function generateReceiptPDF(order: OnrampOrder): void {
+  if (!order.transactionHash) {
+    throw new Error(
+      `Cannot generate receipt for order ${order.id}: transactionHash is missing. ` +
+        'The transaction must be confirmed on-chain before a receipt can be issued.'
+    )
+  }
+
   // Enhanced receipt data with all required fields
   const receiptData = {
     receiptNumber: `RCP-${order.id.slice(-8).toUpperCase()}`,
     date: new Date(order.completedAt || order.createdAt).toLocaleDateString(),
     orderDetails: {
-      amount: '₦50,000.00', // Using the specific example values
-      asset: '31.17 cNGN',
+      amount: `${order.fiatCurrency} ${order.amount.toLocaleString()}`,
+      asset: `${order.cryptoAmount.toFixed(2)} ${order.cryptoAsset}`,
       paymentMethod: order.paymentMethod.replace('_', ' '),
-      exchangeRate: '1 NGN = 0.0006235 USDC',
-      processingFee: 'FREE',
-      networkFee: '₦0.15',
-      totalTime: '3 minutes 42 seconds',
-      completedAt: 'Jan 19, 2026 at 14:26 WAT',
+      exchangeRate: `1 ${order.fiatCurrency} = ${order.exchangeRate} ${order.cryptoAsset}`,
+      processingFee: `${order.fees.processingFee}`,
+      networkFee: `${order.fees.networkFee}`,
+      totalTime:
+        order.completedAt
+          ? `${Math.round((order.completedAt - order.createdAt) / 1000)} seconds`
+          : 'N/A',
+      completedAt: new Date(order.completedAt || order.createdAt).toLocaleString(),
     },
     blockchain: {
-      transactionHash: '8f3e2d1c...9a1b0c2d',
-      walletAddress: 'GAXYZ...ABC123',
+      transactionHash: order.transactionHash,
+      walletAddress: order.walletAddress,
       network: 'Stellar',
-      explorerUrl: 'https://stellar.expert/explorer/public/tx/8f3e2d1c9a1b0c2d',
+      explorerUrl: `https://stellar.expert/explorer/public/tx/${order.transactionHash}`,
     },
   }
 
