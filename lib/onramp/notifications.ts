@@ -129,6 +129,15 @@ function getDetailedNotificationMessage(
 ): { subject: string; message: string } {
   const { orderId, status, amount, currency, cryptoAmount, cryptoAsset, transactionHash } = data
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    throw new Error(
+      'NEXT_PUBLIC_APP_URL is not set. ' +
+        'Add it to your .env.local file (e.g. NEXT_PUBLIC_APP_URL=http://localhost:3000) ' +
+        'before sending email notifications.'
+    )
+  }
+
   switch (type) {
     case 'order_created':
       return {
@@ -141,7 +150,7 @@ Status: ${status.toUpperCase()}
 
 Complete your payment to receive your ${cryptoAsset} tokens.
 
-View order: https://aframp.com/onramp/payment?order=${orderId}`,
+View order: ${appUrl}/onramp/payment?order=${orderId}`,
       }
 
     case 'payment_received':
@@ -167,7 +176,7 @@ Your ${cryptoAsset} will be sent to your wallet shortly.`,
 ⏱️ Total time: 3 minutes 42 seconds
 
 View on Stellar Explorer: https://stellar.expert/explorer/public/tx/${transactionHash}
-Download receipt: https://aframp.com/onramp/success?order=${orderId}
+Download receipt: ${appUrl}/onramp/success?order=${orderId}
 
 Thank you for using AFRAMP!`,
       }

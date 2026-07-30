@@ -1,10 +1,11 @@
 'use client'
 
-import { AlertTriangle, Clock, Info, Loader2 } from 'lucide-react'
+import { AlertTriangle, Clock, Info, Loader2, TrendingDown, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AmountInput } from '@/components/onramp/amount-input'
 import { CurrencySelector } from '@/components/onramp/currency-selector'
 import { AssetSelector } from '@/components/offramp/asset-selector'
+import { Sparkline } from '@/components/ui/sparkline'
 import { formatCurrency, formatNumber } from '@/lib/calculations'
 import { formatRateCountdown, formatUsd } from '@/lib/offramp/formatters'
 import type { FiatCurrency } from '@/types/onramp'
@@ -19,6 +20,7 @@ interface OfframpCalculatorProps {
   rateCountdown: number
   rateUpdatedAt: number
   isRateLoading: boolean
+  rateSparkline?: number[]
   fiatAmount: number
   usdEquivalent: number
   fees: {
@@ -55,6 +57,7 @@ export function OfframpCalculator({
   rateCountdown,
   rateUpdatedAt,
   isRateLoading,
+  rateSparkline = [],
   fiatAmount,
   usdEquivalent,
   fees,
@@ -163,9 +166,14 @@ export function OfframpCalculator({
         <div className="rounded-2xl border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
           <div className="flex items-center justify-between">
             <span>Rate</span>
-            <span className="font-medium text-foreground">
-              1 {selected.asset} = {formatNumber(rate, 2)} {fiatCurrency}
-            </span>
+            <div className="flex items-center gap-2">
+              {rateSparkline.length >= 2 && (
+                <Sparkline data={rateSparkline} width={60} height={22} />
+              )}
+              <span className="font-medium text-foreground">
+                1 {selected.asset} = {formatNumber(rate, 2)} {fiatCurrency}
+              </span>
+            </div>
           </div>
           <div className="mt-2 flex items-center justify-between">
             <span>Refresh in</span>
@@ -180,6 +188,7 @@ export function OfframpCalculator({
             type="button"
             onClick={onRefreshRate}
             className="mt-2 inline-flex items-center gap-2 text-xs text-primary"
+            aria-label="Refresh exchange rate"
           >
             {isRateLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
             Refresh rate
