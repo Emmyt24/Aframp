@@ -31,32 +31,32 @@ export function ReferralPageClient() {
             <ReferralCard walletAddress={walletAddress} />
 
             {/* Analytics snapshot */}
-            {stats && (stats.clickCount > 0 || stats.conversionCount > 0) && (
+            {stats && (stats.conversionCount > 0 || stats.pendingCount > 0 || stats.totalRebatesEarned > 0) && (
               <div className="rounded-3xl border border-border bg-card p-6 space-y-4">
                 <div className="flex items-center gap-2">
                   <History className="w-4 h-4 text-muted-foreground" />
-                  <h3 className="font-semibold text-foreground text-sm">Referral History</h3>
+                  <h3 className="font-semibold text-foreground text-sm">Referral Stats</h3>
                 </div>
 
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between py-2 border-b border-border">
                     <div className="flex items-center gap-2">
-                      <MousePointerClick className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Total link clicks</span>
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Total referrals</span>
                     </div>
-                    <span className="font-semibold text-foreground">{stats.clickCount}</span>
+                    <span className="font-semibold text-foreground">{stats.conversionCount}</span>
                   </div>
                   <div className="flex items-center justify-between py-2 border-b border-border">
                     <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Completed conversions</span>
+                      <MousePointerClick className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Pending referrals</span>
                     </div>
-                    <span className="font-semibold text-foreground">{stats.conversionCount}</span>
+                    <span className="font-semibold text-foreground">{stats.pendingCount}</span>
                   </div>
                   <div className="flex items-center justify-between py-2">
                     <div className="flex items-center gap-2">
                       <Coins className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Total rebates earned</span>
+                      <span className="text-muted-foreground">Total discount earned</span>
                     </div>
                     <span className="font-semibold text-primary">
                       {stats.totalRebatesEarned > 0
@@ -69,13 +69,18 @@ export function ReferralPageClient() {
             )}
 
             {/* Conversion rate insight */}
-            {stats && stats.clickCount > 0 && (
+            {stats && (stats.conversionCount + stats.pendingCount) > 0 && (
               <div className="rounded-3xl border border-border bg-muted/20 p-4 text-center text-sm text-muted-foreground">
                 Conversion rate:{' '}
                 <strong className="text-foreground">
-                  {((stats.conversionCount / stats.clickCount) * 100).toFixed(1)}%
+                  {(
+                    (stats.conversionCount /
+                      (stats.conversionCount + stats.pendingCount)) *
+                    100
+                  ).toFixed(1)}
+                  %
                 </strong>
-                {' '}({stats.conversionCount} of {stats.clickCount} clicks converted)
+                {' '}({stats.conversionCount} completed, {stats.pendingCount} pending)
               </div>
             )}
           </>
