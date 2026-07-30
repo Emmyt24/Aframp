@@ -13,16 +13,20 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Transactions', href: '/dashboard/transactions' },
-  { label: 'Wallets', href: '/dashboard/wallets' },
-  { label: 'Settings', href: '/dashboard/settings' },
+  // /dashboard/transactions and /dashboard/wallets do not exist; route to the
+  // dashboard with a tab query param so navigation resolves correctly (#273).
+  { label: 'Transactions', href: '/dashboard?tab=transactions' },
+  { label: 'Wallets', href: '/dashboard?tab=wallets' },
+  // /dashboard/settings does not exist; the real settings page is at /settings.
+  { label: 'Settings', href: '/settings' },
 ]
 
 const bottomNavItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Onramp', href: '/onramp', icon: ArrowDownUp },
   { label: 'Bills', href: '/bills', icon: Receipt },
-  { label: 'Wallet', href: '/dashboard/wallets', icon: Wallet },
+  // Bottom nav Wallet tab also pointed to non-existent /dashboard/wallets (#273).
+  { label: 'Wallet', href: '/dashboard?tab=wallets', icon: Wallet },
 ]
 
 export function Navbar() {
