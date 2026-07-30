@@ -12,7 +12,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "format": "prettier --write .",
-    "format:check": "prettier --check \"app/bills/pay/[billerId]/page.tsx\" \"components/bills/payment-form.tsx\" \"components/bills/recent-billers.tsx\" \"components/dashboard/transaction-history.tsx\" \"lib/biller-schemas.ts\" \"package.json\"",
+    "format:check": "prettier --check '**/*.{ts,tsx,css,json,md}'",
     "type-check": "tsc --noEmit",
     "prepare": "husky install || true",
     "lighthouse": "lhci autorun",
