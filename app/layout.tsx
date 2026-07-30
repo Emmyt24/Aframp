@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { KycProvider } from '@/contexts/kyc-context'
 import { NotificationProvider } from '@/contexts/notification-context'
+import { PwaUpdateBanner } from '@/components/pwa-update-banner'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -50,7 +51,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <KycProvider>
             <NotificationProvider>
               {children}
@@ -58,6 +59,7 @@ export default function RootLayout({
           </KycProvider>
         </ThemeProvider>
         <CookieConsentBanner />
+        <PwaUpdateBanner />
         <Analytics />
       </body>
     </html>
