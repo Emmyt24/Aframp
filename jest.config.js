@@ -11,7 +11,7 @@ const customJestConfig = {
   testEnvironmentOptions: {
     customExportConditions: [''],
   },
-  modulePathIgnorePatterns: ['<rootDir>/helpcenter/'],
+  modulePathIgnorePatterns: ['<rootDir>/helpcenter/', '<rootDir>/.claude/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
@@ -35,8 +35,7 @@ const customJestConfig = {
     },
   },
   testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
-  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/helpcenter/'],
-  testPathIgnorePatterns: ['/node_modules/', '/helpcenter/'],
+  testPathIgnorePatterns: ['/node_modules/', '/.next/', '/helpcenter/', '/.claude/'],
 }
 
 module.exports = async () => {
