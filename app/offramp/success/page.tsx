@@ -390,7 +390,7 @@ export default function OfframpSuccessPage() {
           </div>
         </div>
       </div>
-      </OfframpWalletGuard>
+    </OfframpWalletGuard>
     </FlowErrorBoundary>
   )
 }
