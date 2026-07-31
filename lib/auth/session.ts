@@ -1,88 +1,50 @@
-/**
- * Stateless, edge-compatible session tokens signed with HMAC-SHA256 via
- * Web Crypto (works in both the Next.js middleware/edge runtime and Node).
- * Avoids pulling in a JWT library that doesn't run on the edge runtime.
- */
+import crypto from 'crypto'
 
-const encoder = new TextEncoder()
+export const SESSION_COOKIE = 'aframp_session'
+export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60 // 30 days
+
+export interface SessionPayload {
+  userId: string
+  phoneNumber: string
+  exp: number
+}
 
 function getSecret(): string {
-  const secret = process.env.AUTH_SESSION_SECRET
+  const secret = process.env.AUTH_SECRET
   if (!secret) {
-    throw new Error('AUTH_SESSION_SECRET environment variable is not set')
+    throw new Error('AUTH_SECRET environment variable is not set')
   }
   return secret
 }
 
-function toBase64Url(bytes: ArrayBuffer): string {
-  const binary = Array.from(new Uint8Array(bytes), (b) => String.fromCharCode(b)).join('')
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+function sign(data: string): string {
+  return crypto.createHmac('sha256', getSecret()).update(data).digest('base64url')
 }
 
-function fromBase64Url(value: string): Uint8Array {
-  const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')
-  const binary = atob(padded)
-  return Uint8Array.from(binary, (c) => c.charCodeAt(0))
+export function createSessionToken(payload: Pick<SessionPayload, 'userId' | 'phoneNumber'>): string {
+  const full: SessionPayload = { ...payload, exp: Date.now() + SESSION_TTL_SECONDS * 1000 }
+  const body = Buffer.from(JSON.stringify(full)).toString('base64url')
+  return `${body}.${sign(body)}`
 }
 
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let mismatch = 0
-  for (let i = 0; i < a.length; i++) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return mismatch === 0
-}
-
-async function hmacSign(data: string, secret: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(data))
-  return toBase64Url(signature)
-}
-
-export interface SessionPayload {
-  sub: string // userId — wallet public key
-  exp: number // unix epoch seconds
-}
-
-const SESSION_TTL_SECONDS = 60 * 60 * 24 // 24h
-
-export async function createSessionToken(userId: string): Promise<string> {
-  const payload: SessionPayload = {
-    sub: userId,
-    exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
-  }
-  const payloadEncoded = toBase64Url(encoder.encode(JSON.stringify(payload)).buffer)
-  const signature = await hmacSign(payloadEncoded, getSecret())
-  return `${payloadEncoded}.${signature}`
-}
-
-export async function verifySessionToken(token: string | undefined | null): Promise<SessionPayload | null> {
+export function verifySessionToken(token: string | undefined | null): SessionPayload | null {
   if (!token) return null
 
-  const [payloadEncoded, signature] = token.split('.')
-  if (!payloadEncoded || !signature) return null
+  const [body, signature] = token.split('.')
+  if (!body || !signature) return null
 
-  const expectedSignature = await hmacSign(payloadEncoded, getSecret())
-  if (!timingSafeEqual(expectedSignature, signature)) return null
-
-  let payload: SessionPayload
-  try {
-    payload = JSON.parse(new TextDecoder().decode(fromBase64Url(payloadEncoded)))
-  } catch {
+  const expected = sign(body)
+  const signatureBuf = Buffer.from(signature)
+  const expectedBuf = Buffer.from(expected)
+  if (signatureBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(signatureBuf, expectedBuf)) {
     return null
   }
 
-  if (typeof payload.sub !== 'string' || typeof payload.exp !== 'number') return null
-  if (payload.exp < Math.floor(Date.now() / 1000)) return null
-
-  return payload
+  try {
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString()) as SessionPayload
+    if (typeof payload.exp !== 'number' || payload.exp < Date.now()) return null
+    return payload
+  } catch {
+    return null
+  }
 }
-
-export const SESSION_COOKIE_NAME = 'aframp_session'

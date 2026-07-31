@@ -105,34 +105,17 @@ export async function verifyAccountNumber(
   bankCode: string,
   accountNumber: string
 ): Promise<string> {
-  const formatError = validateAccountNumber(country, accountNumber)
-  if (formatError) throw new Error(formatError)
+  const response = await fetch(
+    `/api/bank/verify?accountNumber=${encodeURIComponent(accountNumber)}&bankCode=${encodeURIComponent(bankCode)}`
+  )
 
-  if (!OFFRAMP_COUNTRIES[country].supportsNameResolution) {
-    throw new ResolutionUnsupportedError()
+  const result = await response.json().catch(() => null)
+
+  if (!response.ok || !result?.accountName) {
+    throw new Error(result?.error || 'Invalid account number or verification failed')
   }
 
-  const response = await fetch('/api/offramp/resolve-account', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ country, bankCode, accountNumber }),
-  })
-
-  const payload = (await response.json().catch(() => null)) as {
-    accountName?: string
-    error?: string
-    message?: string
-  } | null
-
-  if (response.status === 422 || payload?.error === 'RESOLUTION_UNSUPPORTED') {
-    throw new ResolutionUnsupportedError()
-  }
-
-  if (!response.ok || !payload?.accountName) {
-    throw new Error(payload?.message ?? 'Verification failed. Please check the details.')
-  }
-
-  return payload.accountName
+  return result.accountName
 }
 
 export function saveAccount(account: Omit<BankAccount, 'id'>): BankAccount {
