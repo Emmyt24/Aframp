@@ -372,8 +372,7 @@ export function OnrampPageClient() {
             </Button>
           </div>
 
-          {/* Test Utils - Remove in production */}
-          <OnrampTestUtils />
+          {process.env.NODE_ENV === 'development' && <OnrampTestUtils />}
         </DialogContent>
       </Dialog>
 
