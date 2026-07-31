@@ -81,7 +81,6 @@ export function KycProvider({ children }: KycProviderProps) {
       setKycStatus((prev) => {
         if (prev !== status && notifPush) {
           const messages: Record<KycStatus, { title: string; message: string } | undefined> = {
-            submitted: { title: 'KYC submitted',    message: 'Your documents have been submitted for review.' },
             pending:   { title: 'KYC under review', message: 'Your KYC submission is being reviewed.' },
             approved:  { title: 'KYC approved ✓',   message: 'Your identity is verified. You can now trade.' },
             rejected:  { title: 'KYC rejected',     message: 'Your KYC was not approved. Please resubmit.' },

@@ -14,6 +14,8 @@ export interface ReferralStats {
   ownerAddress: string
   clickCount: number
   conversionCount: number
+  /** Referees who signed up but haven't completed their first ramp yet */
+  pendingCount: number
   totalRebatesEarned: number
 }
 
