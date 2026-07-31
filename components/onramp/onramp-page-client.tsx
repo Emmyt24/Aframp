@@ -35,6 +35,8 @@ import {
 } from '@/lib/referral'
 import { analytics } from '@/lib/analytics'
 
+const ORDER_KEY = 'onramp:latest-order'
+
 export function OnrampPageClient() {
   const router = useRouter()
   const { isConnected: storeConnected, publicKey } = useWallet()

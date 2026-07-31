@@ -2,32 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { TokenBalance } from '@/types/balance'
-import { fetchStellarBalances } from '@/lib/wallet/freighter'
-import { useWalletStore } from '@/lib/wallet/walletStore'
 
-const REFRESH_INTERVAL_MS = 30_000 // 30 seconds
-
-/**
- * Map a Stellar asset code to a USD price approximation.
- * Prices are loaded from the ETH-price proxy for ETH or CoinGecko for XLM;
- * other tokens default to null until a price feed is wired up.
- *
- * Keeping price fetching separate from balance fetching makes the hook
- * easier to extend without breaking the critical balance path.
- */
-async function fetchXlmPrice(): Promise<number | null> {
-  try {
-    const res = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd',
-      { cache: 'no-store' }
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    return (data?.stellar?.usd as number) ?? null
-  } catch {
-    return null
-  }
-}
 
 export function useBalances(walletAddress?: string) {
   const { publicKey: storePublicKey, network } = useWalletStore()
@@ -35,10 +10,33 @@ export function useBalances(walletAddress?: string) {
   // Prefer the explicitly provided walletAddress; fall back to the store key
   const effectiveAddress = walletAddress ?? storePublicKey ?? undefined
 
-  const [balances, setBalances] = useState<TokenBalance[]>([])
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  // Fetch ETH balance from blockchain
+  const fetchWalletEthBalance = useCallback(async (address: string) => {
+    const alchemyApiKey = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY
+    if (!alchemyApiKey) {
+      console.warn(
+        '[use-balances] NEXT_PUBLIC_ALCHEMY_API_KEY is not set — skipping on-chain balance fetch. ' +
+          'Get a free key at https://www.alchemy.com and add it to your .env.local.'
+      )
+      return
+    }
+
+    try {
+      const response = await fetch(
+        `https://eth-mainnet.g.alchemy.com/v2/${alchemyApiKey}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_getBalance',
+            params: [address, 'latest'],
+            id: 1,
+          }),
+        }
+      )
 
   const fetchBalances = useCallback(async () => {
     if (!effectiveAddress) {
@@ -47,8 +45,17 @@ export function useBalances(walletAddress?: string) {
       return
     }
 
-    setLoading(true)
-    setError(null)
+  const fetchEthPrice = useCallback(async () => {
+    try {
+      // Use the project's own /api/rates route (backed by CoinGecko) instead of
+      // a hardcoded personal server. The route returns { ethereum: { usd: number } }.
+      const response = await fetch('/api/rates', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store',
+      })
 
     try {
       // Fetch real Stellar balances from Horizon
@@ -57,33 +64,26 @@ export function useBalances(walletAddress?: string) {
         network ?? 'PUBLIC'
       )
 
-      // Fetch XLM price in parallel (best-effort — failures are non-fatal)
-      const xlmPrice = await fetchXlmPrice()
+      const data = await response.json() as { ethereum?: { usd?: number } }
 
-      const mapped: TokenBalance[] = stellarBalances.map((bal) => {
-        const symbol = bal.asset === 'XLM' ? 'XLM' : bal.asset
-        const amount = parseFloat(bal.balance)
+      const ethPrice: number | null =
+        typeof data?.ethereum?.usd === 'number' ? data.ethereum.usd : null
 
-        if (symbol === 'XLM') {
-          return {
-            symbol,
-            amount,
-            price: xlmPrice,
-            priceLoading: false,
-          }
-        }
-
-        // Non-XLM Stellar assets (cNGN, USDC, cKES, etc.)
-        return {
-          symbol,
-          amount,
-          price: null,
-          priceLoading: false,
-        }
-      })
-
-      setBalances(mapped)
-      setLastUpdated(new Date())
+      if (ethPrice !== null && !isNaN(ethPrice)) {
+        setBalances((prev) =>
+          prev.map((balance) =>
+            balance.symbol === 'ETH'
+              ? {
+                  ...balance,
+                  price: ethPrice,
+                  priceLoading: false,
+                  priceError: null,
+                }
+              : balance
+          )
+        )
+        setLastUpdated(new Date())
+      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to fetch wallet balances'
