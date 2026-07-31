@@ -9,6 +9,16 @@
  *  - POST /api/bills/initiate — Paystack integration, validation
  */
 
+const mockRedisGet = jest.fn()
+const mockRedisSet = jest.fn()
+
+jest.mock('@/lib/redis', () => ({
+  redis: {
+    get: (...args: unknown[]) => mockRedisGet(...args),
+    set: (...args: unknown[]) => mockRedisSet(...args),
+  },
+}))
+
 // ---------------------------------------------------------------------------
 // exchange-rate
 // ---------------------------------------------------------------------------
@@ -18,6 +28,8 @@ describe('GET /api/exchange-rate', () => {
 
   beforeEach(() => {
     jest.resetModules()
+    mockRedisGet.mockReset().mockResolvedValue(null)
+    mockRedisSet.mockReset().mockResolvedValue('OK')
   })
 
   it('returns 200 with rate data from CoinGecko', async () => {
@@ -38,6 +50,24 @@ describe('GET /api/exchange-rate', () => {
 
     expect(response.status).toBe(200)
     expect(data).toEqual(mockData)
+    expect(response.headers.get('X-Cache')).toBe('MISS')
+    expect(mockRedisSet).toHaveBeenCalledWith('exchange-rates', mockData, { ex: 60 })
+  })
+
+  it('returns cached rates without calling CoinGecko', async () => {
+    const cached = {
+      'usd-coin': { ngn: 1600, kes: 130 },
+      stellar: { ngn: 160, kes: 13 },
+    }
+    mockRedisGet.mockResolvedValue(cached)
+    global.fetch = jest.fn()
+
+    const { GET } = await import('@/app/api/exchange-rate/route')
+    const response = await GET()
+
+    expect(await response.json()).toEqual(cached)
+    expect(response.headers.get('X-Cache')).toBe('HIT')
+    expect(global.fetch).not.toHaveBeenCalled()
   })
 
   it('returns error status when CoinGecko responds with non-ok', async () => {
@@ -83,6 +113,100 @@ describe('GET /api/exchange-rate', () => {
     expect(calledUrl).toContain('ghs')
     expect(calledUrl).toContain('zar')
     expect(calledUrl).toContain('ugx')
+  })
+
+  it('fetches fresh rates when Redis is unavailable', async () => {
+    const mockData = {
+      'usd-coin': { ngn: 1600 },
+      stellar: { ngn: 160 },
+    }
+    mockRedisGet.mockRejectedValue(new Error('Redis unavailable'))
+    mockRedisSet.mockRejectedValue(new Error('Redis unavailable'))
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(mockData),
+    })
+
+    const { GET } = await import('@/app/api/exchange-rate/route')
+    const response = await GET()
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual(mockData)
+    expect(response.headers.get('X-Cache')).toBe('MISS')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// rates
+// ---------------------------------------------------------------------------
+
+describe('GET /api/rates', () => {
+  beforeEach(() => {
+    jest.resetModules()
+    mockRedisGet.mockReset().mockResolvedValue(null)
+    mockRedisSet.mockReset().mockResolvedValue('OK')
+  })
+
+  it('returns a cached Ethereum rate without calling CoinGecko', async () => {
+    const cached = { ethereum: { usd: 3500 } }
+    mockRedisGet.mockResolvedValue(cached)
+    global.fetch = jest.fn()
+
+    const { GET } = await import('@/app/api/rates/route')
+    const response = await GET()
+
+    expect(await response.json()).toEqual(cached)
+    expect(response.headers.get('X-Cache')).toBe('HIT')
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('caches a fresh Ethereum rate for 60 seconds', async () => {
+    const fresh = { ethereum: { usd: 3500 } }
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(fresh),
+    })
+
+    const { GET } = await import('@/app/api/rates/route')
+    const response = await GET()
+
+    expect(await response.json()).toEqual(fresh)
+    expect(response.headers.get('X-Cache')).toBe('MISS')
+    expect(mockRedisSet).toHaveBeenCalledWith('exchange-rates:ethereum-usd', fresh, {
+      ex: 60,
+    })
+  })
+
+  it('returns the upstream error when no cached rate is available', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+    })
+
+    const { GET } = await import('@/app/api/rates/route')
+    const response = await GET()
+
+    expect(response.status).toBe(502)
+    expect(await response.json()).toEqual({ error: 'CoinGecko responded 429' })
+  })
+
+  it('returns fresh rates when the Redis write fails', async () => {
+    const fresh = { ethereum: { usd: 3500 } }
+    mockRedisSet.mockRejectedValue(new Error('Redis unavailable'))
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(fresh),
+    })
+
+    const { GET } = await import('@/app/api/rates/route')
+    const response = await GET()
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual(fresh)
+    expect(response.headers.get('X-Cache')).toBe('MISS')
   })
 })
 
@@ -257,7 +381,13 @@ describe('POST /api/withdrawals', () => {
       new Request('http://localhost/api/withdrawals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, amountCents: 1_000_00, asset: 'cNGN', chain: 'Stellar', kycTier: 'TIER_1' }),
+        body: JSON.stringify({
+          userId,
+          amountCents: 1_000_00,
+          asset: 'cNGN',
+          chain: 'Stellar',
+          kycTier: 'TIER_1',
+        }),
       })
     )
 
@@ -266,7 +396,13 @@ describe('POST /api/withdrawals', () => {
       new Request('http://localhost/api/withdrawals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, amountCents: 1_00, asset: 'cNGN', chain: 'Stellar', kycTier: 'TIER_1' }),
+        body: JSON.stringify({
+          userId,
+          amountCents: 1_00,
+          asset: 'cNGN',
+          chain: 'Stellar',
+          kycTier: 'TIER_1',
+        }),
       })
     )
 
@@ -465,7 +601,9 @@ describe('POST /api/referral', () => {
     const ownerWallet = 'GSELFUSE_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
 
     const { GET, POST } = await import('@/app/api/referral/route')
-    const getResponse = await GET(new Request(`http://localhost/api/referral?wallet=${ownerWallet}`))
+    const getResponse = await GET(
+      new Request(`http://localhost/api/referral?wallet=${ownerWallet}`)
+    )
     const { code } = await getResponse.json()
 
     const postResponse = await POST(
@@ -486,7 +624,9 @@ describe('POST /api/referral', () => {
     const refereeWallet = 'GREFEREE_CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC'
 
     const { GET, POST } = await import('@/app/api/referral/route')
-    const getResponse = await GET(new Request(`http://localhost/api/referral?wallet=${ownerWallet}`))
+    const getResponse = await GET(
+      new Request(`http://localhost/api/referral?wallet=${ownerWallet}`)
+    )
     const { code } = await getResponse.json()
 
     const postResponse = await POST(
@@ -508,7 +648,9 @@ describe('POST /api/referral', () => {
     const refereeWallet = 'GREFEREE_EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE'
 
     const { GET, POST } = await import('@/app/api/referral/route')
-    const getResponse = await GET(new Request(`http://localhost/api/referral?wallet=${ownerWallet}`))
+    const getResponse = await GET(
+      new Request(`http://localhost/api/referral?wallet=${ownerWallet}`)
+    )
     const { code } = await getResponse.json()
 
     // First use — should succeed
