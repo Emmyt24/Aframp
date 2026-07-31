@@ -1,8 +1,4 @@
-import { promises as fs } from 'fs'
-import path from 'path'
-import { desc, eq } from 'drizzle-orm'
-import { db, hasDatabase } from '@/db/client'
-import { priceAlertEvents, priceAlertRules } from '@/db/schema'
+import { Redis } from '@upstash/redis'
 
 export type PriceAlertChannel = 'email' | 'push'
 export type PriceAlertDirection = 'below' | 'above'
@@ -39,74 +35,28 @@ export interface PriceAlertsStore {
   history: PriceAlertEvent[]
 }
 
-const generateId = () => `alert_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
-
-function ruleToRow(rule: PriceAlertRule) {
-  return {
-    id: rule.id,
-    asset: rule.asset,
-    direction: rule.direction,
-    threshold: String(rule.threshold),
-    email: rule.email,
-    notifyEmail: rule.channels.email,
-    notifyPush: rule.channels.push,
-    lastTriggeredAt: rule.lastTriggeredAt ? new Date(rule.lastTriggeredAt) : null,
-  }
-}
-
-function rowToRule(row: typeof priceAlertRules.$inferSelect): PriceAlertRule {
-  return {
-    id: row.id,
-    asset: row.asset as 'cNGN',
-    direction: row.direction as PriceAlertDirection,
-    threshold: Number(row.threshold),
-    channels: { email: row.notifyEmail, push: row.notifyPush },
-    email: row.email,
-    createdAt: row.createdAt.getTime(),
-    lastTriggeredAt: row.lastTriggeredAt ? row.lastTriggeredAt.getTime() : undefined,
-  }
-}
-
-function rowToEvent(row: typeof priceAlertEvents.$inferSelect): PriceAlertEvent {
-  return {
-    id: row.id,
-    ruleId: row.ruleId,
-    asset: row.asset as 'cNGN',
-    direction: row.direction as PriceAlertDirection,
-    threshold: Number(row.threshold),
-    actualValue: Number(row.actualValue),
-    channel: row.channel as PriceAlertChannel,
-    notifiedAt: row.notifiedAt.getTime(),
-    message: row.message,
-  }
-}
-
-// ── File-backed fallback (local dev only, when DATABASE_URL is unset) ──────
-const STORE_PATH = path.join(process.cwd(), 'db', 'price-alerts-store.json')
+const STORE_KEY = 'aframp:price-alerts-store'
 const DEFAULT_STORE: PriceAlertsStore = { rules: [], history: [] }
 
-async function ensureStoreFile() {
-  try {
-    await fs.access(STORE_PATH)
-  } catch {
-    await fs.mkdir(path.dirname(STORE_PATH), { recursive: true })
-    await fs.writeFile(STORE_PATH, JSON.stringify(DEFAULT_STORE, null, 2), 'utf8')
+let redisClient: Redis | null = null
+
+function getRedisClient(): Redis {
+  if (!redisClient) {
+    redisClient = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
   }
+  return redisClient
 }
 
 async function readPriceAlertStore(): Promise<PriceAlertsStore> {
-  await ensureStoreFile()
-  try {
-    const raw = await fs.readFile(STORE_PATH, 'utf8')
-    return JSON.parse(raw) as PriceAlertsStore
-  } catch {
-    return DEFAULT_STORE
-  }
+  const stored = await getRedisClient().get<PriceAlertsStore>(STORE_KEY)
+  return stored ?? DEFAULT_STORE
 }
 
 async function writePriceAlertStore(store: PriceAlertsStore): Promise<PriceAlertsStore> {
-  await fs.mkdir(path.dirname(STORE_PATH), { recursive: true })
-  await fs.writeFile(STORE_PATH, JSON.stringify(store, null, 2), 'utf8')
+  await getRedisClient().set(STORE_KEY, store)
   return store
 }
 

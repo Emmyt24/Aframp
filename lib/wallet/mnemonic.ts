@@ -2091,17 +2091,38 @@ export function validateMnemonic(mnemonic: string[] | string): boolean {
 }
 
 /**
- * Convert mnemonic to seed (placeholder - in production use proper BIP39 derivation)
+ * Convert mnemonic to seed per the BIP39 spec: PBKDF2-HMAC-SHA512 over the
+ * mnemonic phrase, salted with "mnemonic" + passphrase, 2048 iterations, 64-byte output.
  * @param mnemonic - Array of words
+ * @param passphrase - Optional BIP39 passphrase (defaults to empty string)
  * @returns Hex string seed
  */
-export async function mnemonicToSeed(mnemonic: string[]): Promise<string> {
-  const phrase = mnemonic.join(' ')
+export async function mnemonicToSeed(mnemonic: string[], passphrase = ''): Promise<string> {
+  const phrase = mnemonic.join(' ').normalize('NFKD')
+  const salt = ('mnemonic' + passphrase).normalize('NFKD')
   const encoder = new TextEncoder()
-  const data = encoder.encode(phrase)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(phrase),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  )
+
+  const seedBits = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: encoder.encode(salt),
+      iterations: 2048,
+      hash: 'SHA-512',
+    },
+    keyMaterial,
+    512
+  )
+
+  const seedArray = Array.from(new Uint8Array(seedBits))
+  return seedArray.map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 /**

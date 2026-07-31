@@ -61,6 +61,12 @@ export function PaymentForm({ schema, countryCode }: PaymentFormProps) {
         field.validation.message
       )
     }
+    if (field.validation.min !== undefined) {
+      const minValue = field.validation.min
+      validator = (validator as z.ZodString).refine((val) => Number(val) >= minValue, {
+        message: field.validation.message || `Minimum value is ${minValue}`,
+      }) as unknown as z.ZodString
+    }
     formSchemaObject[field.name] = validator
   })
 
