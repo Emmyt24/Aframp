@@ -28,12 +28,10 @@ import { Button } from '@/components/ui/button' // Added missing import for Butt
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   getAppliedReferralCode,
-  isReferralDiscountConsumed,
   calcReferralDiscount,
-  markReferralDiscountConsumed,
   setAppliedReferralCode,
 } from '@/lib/referral'
-import { analytics } from '@/lib/analytics'
+import { useReferral } from '@/hooks/use-referral'
 
 const ORDER_KEY = 'onramp:latest-order'
 
@@ -52,6 +50,8 @@ export function OnrampPageClient() {
   } =
     useWalletConnection()
   const walletConnected = Boolean(address) || connected || storeConnected || Boolean(publicKey)
+  const referralWalletAddress = address || publicKey || ''
+  const { discountActive, discountConsumed, consumeDiscount } = useReferral(referralWalletAddress)
   const [walletModalOpen, setWalletModalOpen] = useState(false)
   const [disconnectModalOpen, setDisconnectModalOpen] = useState(false)
   const [rateOverride, setRateOverride] = useState(0)
@@ -88,10 +88,10 @@ export function OnrampPageClient() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const refCode = params.get('ref')
-    if (refCode && !getAppliedReferralCode() && !isReferralDiscountConsumed()) {
+    if (refCode && !getAppliedReferralCode() && !discountConsumed) {
       setAppliedReferralCode(refCode.toUpperCase())
     }
-  }, [])
+  }, [discountConsumed])
 
   // Only show modal if definitely not connected after loading
   useEffect(() => {
@@ -163,9 +163,15 @@ export function OnrampPageClient() {
     setIsSubmitting(true)
 
     try {
-      // Apply referral discount (10% off fees) on first ramp
+      // Apply referral discount (10% off fees) on first ramp. Consumption is
+      // reserved server-side up front so the one-time discount can't be
+      // replayed by racing requests or clearing client-side state.
       const referralCode = getAppliedReferralCode()
-      const hasDiscount = !!referralCode && !isReferralDiscountConsumed()
+      let hasDiscount = false
+      if (referralCode && discountActive) {
+        const consumeError = await consumeDiscount()
+        hasDiscount = !consumeError
+      }
       const reward = hasDiscount ? calcReferralDiscount(form.fees.totalFees) : null
       const discountedFees = reward
         ? {
@@ -203,8 +209,6 @@ export function OnrampPageClient() {
 
       const result = await response.json()
       const order: OnrampOrder = result.order
-
-      if (hasDiscount) markReferralDiscountConsumed()
 
       localStorage.setItem(ORDER_KEY, JSON.stringify(order))
       localStorage.setItem(`onramp:order:${order.id}`, JSON.stringify(order))
@@ -338,13 +342,36 @@ export function OnrampPageClient() {
             </div>
             <div className="rounded-3xl border border-border bg-card p-6">
               <h4 className="text-sm font-semibold text-foreground">Fee Summary</h4>
-              <div className="mt-3">
-                <OnrampFeeSummary
-                  fees={form.fees}
-                  fiatCurrency={form.state.fiatCurrency}
-                  paymentMethod={form.state.paymentMethod}
-                  showReferralLink
-                />
+              <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center justify-between">
+                  <span>Processing fee</span>
+                  <span className="text-foreground">{processingFeeLabel}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Network fee</span>
+                  <span className="text-foreground">
+                    {formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}
+                  </span>
+                </div>
+                {discountActive && (
+                  <div className="flex items-center justify-between text-green-600 dark:text-green-400">
+                    <span>Referral discount (10%)</span>
+                    <span>
+                      −{formatCurrency(form.fees.totalFees * 0.1, form.state.fiatCurrency)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between border-t border-border pt-3 text-foreground">
+                  <span>Total cost</span>
+                  <span className="font-semibold">
+                    {formatCurrency(
+                      discountActive
+                        ? form.fees.totalCost - form.fees.totalFees * 0.1
+                        : form.fees.totalCost,
+                      form.state.fiatCurrency
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
           </div>

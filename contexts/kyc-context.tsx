@@ -40,14 +40,35 @@ export function KycProvider({ children }: KycProviderProps) {
     // NotificationProvider not yet mounted — skip notifications
   }
 
-  // Restore from localStorage on mount
+  // Restore submissionId from localStorage, then re-verify the actual status
+  // with the server — the locally cached status is a UI convenience only and
+  // must never be trusted, since a user can freely edit it in DevTools.
   useEffect(() => {
-    const storedStatus = localStorage.getItem(KYC_STORAGE_KEY) as KycStatus | null
     const storedSubmissionId = localStorage.getItem(SUBMISSION_STORAGE_KEY)
-
-    setKycStatus(storedStatus)
     setSubmissionIdState(storedSubmissionId)
-    setIsLoading(false)
+
+    if (!storedSubmissionId) {
+      localStorage.removeItem(KYC_STORAGE_KEY)
+      setKycStatus(null)
+      setIsLoading(false)
+      return
+    }
+
+    fetch(`/api/kyc/status/${storedSubmissionId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const verifiedStatus: KycStatus | null = data?.status ?? null
+        setKycStatus(verifiedStatus)
+        if (verifiedStatus) {
+          localStorage.setItem(KYC_STORAGE_KEY, verifiedStatus)
+        } else {
+          localStorage.removeItem(KYC_STORAGE_KEY)
+        }
+      })
+      .catch(() => {
+        setKycStatus(null)
+      })
+      .finally(() => setIsLoading(false))
   }, [])
 
   const setSubmissionId = (id: string) => {

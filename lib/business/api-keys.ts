@@ -1,6 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
-import { db, hasDatabase } from '@/db/client'
-import { apiKeys as apiKeysTable } from '@/db/schema'
+import { randomBytes } from 'crypto'
 
 export interface ApiKey {
   id: string
@@ -22,11 +20,9 @@ export interface CreateApiKeyResult {
 }
 
 function generateKey(): { rawSecret: string; prefix: string; masked: string } {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-  let raw = 'afr_'
-  for (let i = 0; i < 40; i++) {
-    raw += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
+  // crypto.randomBytes is a CSPRNG — Math.random() is predictable and must
+  // never be used to derive secrets.
+  const raw = 'afr_' + randomBytes(30).toString('base64url').slice(0, 40)
   const prefix = raw.slice(0, 12)
   const masked = prefix + '…' + raw.slice(-4)
   return { rawSecret: raw, prefix, masked }
