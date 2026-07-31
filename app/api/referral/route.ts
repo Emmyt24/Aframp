@@ -1,24 +1,17 @@
 import { NextResponse } from 'next/server'
-import { generateReferralCode, type ReferralRecord } from '@/lib/referral'
+import { generateReferralCode } from '@/lib/referral'
+import { addReferee, createReferralRecordIfMissing, getReferralRecord } from '@/lib/referral/store'
 
-/**
- * In-memory store — replace with DB in production.
- * Key: referral code, Value: ReferralRecord
- */
-const store = new Map<string, ReferralRecord>()
-
-function getOrCreate(walletAddress: string): ReferralRecord {
+async function getOrCreate(walletAddress: string) {
   const code = generateReferralCode(walletAddress)
-  if (!store.has(code)) {
-    store.set(code, {
-      code,
-      ownerAddress: walletAddress,
-      referees: [],
-      totalRebatesEarned: 0,
-      createdAt: Date.now(),
-    })
-  }
-  return store.get(code)!
+  await createReferralRecordIfMissing({
+    code,
+    ownerAddress: walletAddress,
+    referees: [],
+    totalRebatesEarned: 0,
+    createdAt: Date.now(),
+  })
+  return getReferralRecord(code)
 }
 
 /** GET /api/referral?wallet=G... — fetch or create referral record */
@@ -27,7 +20,7 @@ export async function GET(request: Request) {
   const wallet = searchParams.get('wallet')
   if (!wallet) return NextResponse.json({ error: 'wallet required' }, { status: 400 })
 
-  const record = getOrCreate(wallet)
+  const record = await getOrCreate(wallet)
   return NextResponse.json(record)
 }
 
@@ -40,7 +33,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'code and refereeWallet required' }, { status: 400 })
   }
 
-  const record = store.get(code.toUpperCase())
+  const record = await getReferralRecord(code.toUpperCase())
   if (!record) {
     return NextResponse.json({ error: 'Invalid referral code' }, { status: 404 })
   }
@@ -53,6 +46,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Code already used by this wallet' }, { status: 409 })
   }
 
-  record.referees.push(refereeWallet)
+  await addReferee(record.code, refereeWallet)
   return NextResponse.json({ success: true, discountPct: 10 })
 }
