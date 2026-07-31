@@ -1,4 +1,4 @@
-import * as StellarSdk from '@stellar/stellar-sdk'
+import { Server, Asset, Networks, Operation, TransactionBuilder } from '@stellar/stellar-sdk'
 import type { FreighterNetwork } from '@/lib/wallet'
 import { captureError, log } from '@/lib/observability'
 
