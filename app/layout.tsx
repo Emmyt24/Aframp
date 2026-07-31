@@ -1,6 +1,7 @@
 import type React from 'react'
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import CookieConsentBanner from '@/components/CookieConsentBanner'
 import { ThemeProvider } from '@/components/theme-provider'
 import { KycProvider } from '@/contexts/kyc-context'
 import { NotificationProvider } from '@/contexts/notification-context'

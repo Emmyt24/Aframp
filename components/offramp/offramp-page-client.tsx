@@ -93,15 +93,9 @@ export function OfframpPageClient() {
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   // Show the confirmation summary first; the order is only created after
   // the user explicitly confirms in the dialog.
-  const handleInitialSubmit = () => {
-    if (!form.isValid || isSubmitting) return
-    setShowConfirmDialog(true)
-  }
-
   const handleInitialSubmit = () => {
     if (!form.isValid || isSubmitting) return
     setShowConfirmDialog(true)
