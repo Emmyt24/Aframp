@@ -1,23 +1,44 @@
-import Server, { Asset, Networks, Operation, TransactionBuilder } from '@stellar/stellar-sdk'
+import * as StellarSdk from '@stellar/stellar-sdk'
 import type { FreighterNetwork } from '@/lib/wallet'
 import { captureError, log } from '@/lib/observability'
+
+const { Asset, Networks, Operation, TransactionBuilder } = StellarSdk
+// Server is accessed as a named export under the default namespace in the Stellar SDK
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Server: new (url: string) => any = (StellarSdk as any).Horizon?.Server ?? (StellarSdk as any).Server
 
 const HORIZON_PUBLIC = 'https://horizon.stellar.org'
 const HORIZON_TESTNET = 'https://horizon-testnet.stellar.org'
 
-// Known issuers — override via NEXT_PUBLIC_ env vars
-const ASSET_ISSUERS: Record<string, string> = {
-  cNGN: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_CNGN_ISSUER) || 'GAHJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3TNFWQQE',
-  USDC: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_USDC_ISSUER) || 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN',
-  cKES: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_CKES_ISSUER) || '',
-  cGHS: (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_CGHS_ISSUER) || '',
+// Asset issuers are required env vars — no hardcoded fallbacks.
+// Missing values in any environment will cause swaps to target the wrong asset or fail.
+// Add NEXT_PUBLIC_CNGN_ISSUER and NEXT_PUBLIC_USDC_ISSUER to your .env.local file.
+function requireIssuer(envVar: string, assetCode: string): string {
+  const value = typeof process !== 'undefined' ? process.env[envVar] : undefined
+  if (!value) {
+    throw new Error(
+      `${envVar} is not set. ` +
+        `Add it to your .env.local file to enable ${assetCode} swaps. ` +
+        'Use the testnet issuer for development or contact the AFRAMP team for the production address.'
+    )
+  }
+  return value
+}
+
+// Known issuers — configured entirely via NEXT_PUBLIC_ env vars.
+// cKES and cGHS issuers are optional and only validated when those assets are actually used.
+const ASSET_ISSUERS: Record<string, string | undefined> = {
+  cNGN: typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_CNGN_ISSUER : undefined,
+  USDC: typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_USDC_ISSUER : undefined,
+  cKES: typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_CKES_ISSUER : undefined,
+  cGHS: typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_CGHS_ISSUER : undefined,
 }
 
 export const SWAP_ASSETS = ['cNGN', 'USDC', 'XLM', 'cKES', 'cGHS'] as const
 export type SwapAsset = (typeof SWAP_ASSETS)[number]
 
 export interface SwapPath {
-  path: Asset[]
+  path: StellarSdk.Asset[]
   sourceAmount: string
   destinationAmount: string
 }
@@ -28,7 +49,7 @@ export interface SwapSimulation {
   fromAmount: string
   toAmount: string
   /** Best path found by Stellar DEX path-finding */
-  path: Asset[]
+  path: StellarSdk.Asset[]
   /** Minimum received after slippage */
   minReceived: string
   /** Effective exchange rate */
@@ -38,8 +59,10 @@ export interface SwapSimulation {
   slippagePct: number
 }
 
-function getAsset(code: SwapAsset): Asset {
+function getAsset(code: SwapAsset): StellarSdk.Asset {
   if (code === 'XLM') return Asset.native()
+  if (code === 'cNGN') return new Asset(code, requireIssuer('NEXT_PUBLIC_CNGN_ISSUER', code))
+  if (code === 'USDC') return new Asset(code, requireIssuer('NEXT_PUBLIC_USDC_ISSUER', code))
   const issuer = ASSET_ISSUERS[code]
   if (!issuer) throw new Error(`Unknown issuer for ${code}`)
   return new Asset(code, issuer)
@@ -50,21 +73,24 @@ function getHorizon(network: FreighterNetwork | null) {
 }
 
 /**
- * Simulate a swap using Stellar DEX strict-receive path payment.
- * Returns the best route and expected output — equivalent to 1inch/Jupiter quote.
+ * Find the optimal DEX route for a strict-send path payment.
+ *
+ * Queries Stellar Horizon's `/paths/strict-send` endpoint and returns all
+ * candidate paths sorted by best (highest) destination amount first.
+ *
+ * This is the routing layer — call {@link simulateSwap} for a full quote
+ * including slippage math, or call this directly when you need the raw paths.
  */
-export async function simulateSwap(
+export async function findSwapPath(
   fromAsset: SwapAsset,
   toAsset: SwapAsset,
   fromAmount: string,
-  slippagePct: number,
   network: FreighterNetwork | null
-): Promise<SwapSimulation> {
+): Promise<SwapPath[]> {
   const horizonUrl = getHorizon(network)
   const src = getAsset(fromAsset)
   const dest = getAsset(toAsset)
 
-  // Use Stellar's path-payment strict-send finder
   const params = new URLSearchParams({
     source_asset_type: src.isNative() ? 'native' : 'credit_alphanum4',
     ...(src.isNative() ? {} : { source_asset_code: src.getCode(), source_asset_issuer: src.getIssuer() }),
@@ -134,7 +160,8 @@ export async function simulateSwap(
 }
 
 /**
- * Build a path-payment strict-send XDR for signing via Freighter.
+ * Build a PathPaymentStrictSend XDR for signing via Freighter.
+ * Uses the optimal path from simulateSwap / findSwapPath.
  */
 export async function buildSwapXdr(
   sourcePublicKey: string,

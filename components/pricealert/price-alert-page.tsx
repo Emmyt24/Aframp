@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
-import type { PriceAlertEvent, PriceAlertRule } from '@/lib/price-alerts'
+import type { PriceAlertDirection, PriceAlertEvent, PriceAlertRule } from '@/lib/price-alerts'
 
 interface PriceAlertStore {
   rules: PriceAlertRule[]
@@ -17,9 +17,14 @@ interface PriceAlertStore {
   currentPrice: number
 }
 
-const INITIAL_RULE = {
+const INITIAL_RULE: {
+  email: string
+  direction: PriceAlertDirection
+  threshold: number
+  channels: { email: boolean; push: boolean }
+} = {
   email: '',
-  direction: 'below' as const,
+  direction: 'below',
   threshold: 1000,
   channels: {
     email: true,
