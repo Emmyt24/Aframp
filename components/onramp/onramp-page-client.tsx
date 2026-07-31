@@ -33,6 +33,7 @@ import {
   markReferralDiscountConsumed,
   setAppliedReferralCode,
 } from '@/lib/referral'
+import { analytics } from '@/lib/analytics'
 
 export function OnrampPageClient() {
   const router = useRouter()
@@ -126,6 +127,12 @@ export function OnrampPageClient() {
   // the user explicitly confirms in the dialog.
   const handleInitialSubmit = () => {
     if (!form.isValid || isSubmitting) return
+    analytics.track('onramp_initiated', {
+      amount: form.amountValue,
+      fiatCurrency: form.state.fiatCurrency,
+      cryptoAsset: form.state.cryptoAsset,
+      paymentMethod: form.state.paymentMethod,
+    })
     setShowConfirmDialog(true)
   }
 
@@ -199,6 +206,16 @@ export function OnrampPageClient() {
 
       localStorage.setItem(ORDER_KEY, JSON.stringify(order))
       localStorage.setItem(`onramp:order:${order.id}`, JSON.stringify(order))
+
+      analytics.track('onramp_order_created', {
+        orderId: order.id,
+        amount: order.amount,
+        fiatCurrency: order.fiatCurrency,
+        cryptoAsset: order.cryptoAsset,
+        cryptoAmount: order.cryptoAmount,
+        paymentMethod: order.paymentMethod,
+        hasReferralDiscount: hasDiscount,
+      })
 
       setShowConfirmDialog(false)
 
