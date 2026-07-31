@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { kycStore } from '@/lib/kyc/store'
+import { getKycSubmission, setKycSubmission } from '@/lib/kyc/store'
 
 export async function GET(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function GET(
     )
   }
 
-  const submission = kycStore.get(submissionId)
+  const submission = await getKycSubmission(submissionId)
 
   if (!submission) {
     return NextResponse.json(
@@ -27,7 +27,7 @@ export async function GET(
   if (Date.now() > submission.expiresAt) {
     submission.status = 'expired'
     submission.updatedAt = Date.now()
-    kycStore.set(submissionId, submission)
+    await setKycSubmission(submissionId, submission)
   }
 
   return NextResponse.json(

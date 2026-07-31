@@ -1,8 +1,13 @@
 import { Suspense } from 'react'
 import { OnrampPaymentClient } from '@/components/onramp/onramp-payment-client'
+import { FlowErrorBoundary } from '@/components/error/FlowErrorBoundary'
 
 function OnrampPaymentPageContent() {
-  return <OnrampPaymentClient />
+  return (
+    <FlowErrorBoundary step="onramp-payment" restartHref="/onramp">
+      <OnrampPaymentClient />
+    </FlowErrorBoundary>
+  )
 }
 
 export default function OnrampPaymentPage() {

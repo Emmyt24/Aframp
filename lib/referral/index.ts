@@ -1,8 +1,7 @@
 /**
  * Referral program core logic.
  *
- * Storage: localStorage (client) + in-memory Map (server/API mock).
- * In production, replace the Map with a real DB.
+ * Storage: localStorage (client) + lib/referral/store.ts (server, DB-backed).
  */
 
 export const REFERRAL_DISCOUNT_PCT = 10 // 10% off first ramp fees
