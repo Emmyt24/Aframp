@@ -16,11 +16,13 @@ export type { MobileMoneyOption } from './regions'
 
 import { mpesaProvider } from './mpesa'
 import { mtnMomoProvider } from './mtn-momo'
+import { flutterwaveProvider } from './flutterwave'
 import type { MobileMoneyProvider, MobileMoneyProviderName } from './types'
 
 const providers: Record<MobileMoneyProviderName, MobileMoneyProvider> = {
   mpesa: mpesaProvider,
   mtn_momo: mtnMomoProvider,
+  flutterwave: flutterwaveProvider,
 }
 
 /**

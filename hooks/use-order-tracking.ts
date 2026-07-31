@@ -1,10 +1,37 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { OnrampOrder, OrderStatus } from '@/types/onramp'
+import { fetchOrder, patchOrder, persistOrder, readCachedOrder } from '@/lib/orders/order-client'
+import { useWalletConnection } from '@/hooks/use-wallet-connection'
 
+/**
+ * Loads and tracks a single onramp order.
+ *
+ * The order is resolved in two passes so a cleared cache or a different device
+ * no longer loses the order:
+ *   1. the localStorage copy renders immediately (optimistic), then
+ *   2. the server copy replaces it once /api/orders responds.
+ *
+ * Status updates are written to both, and never block on the network.
+ */
 export function useOrderTracking(orderId: string | null) {
+  const { address, loading: walletLoading } = useWalletConnection()
   const [order, setOrder] = useState<OnrampOrder | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [resolving, setResolving] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Kept in refs so updateOrderStatus stays referentially stable — callers pass
+  // it into effects (see useOrderStatusUpdates) that must not re-run on every
+  // order change.
+  const orderRef = useRef<OnrampOrder | null>(null)
+  const addressRef = useRef('')
+
+  useEffect(() => {
+    orderRef.current = order
+  }, [order])
+
+  useEffect(() => {
+    addressRef.current = address
+  }, [address])
 
   useEffect(() => {
     if (!orderId) {
@@ -102,8 +129,9 @@ export function useOrderTracking(orderId: string | null) {
 
   return {
     order,
-    loading,
-    error,
+    // Derived rather than stored, so the missing-id case needs no effect.
+    loading: orderId ? resolving : false,
+    error: orderId ? loadError : 'No order ID provided',
     updateOrderStatus,
   }
 }

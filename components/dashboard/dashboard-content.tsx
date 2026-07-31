@@ -86,7 +86,7 @@ export function DashboardContent({ walletName, walletAddress }: DashboardContent
       />
 
       {/* Transaction History */}
-      <TransactionHistory loading={loading} />
+      <TransactionHistory />
 
       {/* Modals */}
       <SwapModal
