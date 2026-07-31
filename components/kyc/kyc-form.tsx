@@ -16,6 +16,13 @@ interface KycFormProps {
   onComplete?: () => void
 }
 
+const INDICATOR_STEP: Record<KycSubmissionStep, 'id' | 'selfie' | 'review' | 'submitted'> = {
+  id_upload: 'id',
+  selfie_upload: 'selfie',
+  review: 'review',
+  submitted: 'submitted',
+}
+
 export function KycForm({ onComplete }: KycFormProps) {
   const [step, setStep] = useState<KycSubmissionStep>('id_upload')
   const { state, handleFileUpload, submit, reset } = useKycForm({
@@ -23,7 +30,7 @@ export function KycForm({ onComplete }: KycFormProps) {
       setStep('submitted')
     },
   })
-  const { updateKycStatus, setSubmissionId } = useKyc()
+  const { kycStatus, updateKycStatus, setSubmissionId } = useKyc()
   const { checkStatus } = useKycStatusPolling({
     submissionId: state.submissionId,
     onStatusChange: (status) => {
@@ -76,7 +83,7 @@ export function KycForm({ onComplete }: KycFormProps) {
 
         <div className="space-y-4">
           <KycStatusDisplay
-            status={state.submissionId ? 'pending' : 'pending'}
+            status={kycStatus ?? 'pending'}
             isPolling={true}
           />
 
@@ -100,7 +107,7 @@ export function KycForm({ onComplete }: KycFormProps) {
 
   return (
     <div className="space-y-6">
-      <KycStepIndicator currentStep={step} />
+      <KycStepIndicator currentStep={INDICATOR_STEP[step]} />
 
       {state.error && (
         <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">

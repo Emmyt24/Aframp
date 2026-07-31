@@ -21,11 +21,20 @@ export async function simulateOnrampFlow(order: OnrampOrder) {
   await delay(3000)
 
   // 3. Transaction complete
+  // transactionHash must come from the Stellar network response after broadcast.
+  // The caller is responsible for setting order.transactionHash before invoking this
+  // function, or passing an order that already has the confirmed hash attached.
   console.warn('✅ Transaction complete')
+  if (!updatedOrder.transactionHash) {
+    throw new Error(
+      `Cannot complete onramp flow for order ${updatedOrder.id}: ` +
+        'transactionHash is missing. Submit the transaction to Stellar first and ' +
+        'attach the returned hash to the order before calling simulateOnrampFlow.'
+    )
+  }
   const completedOrder = {
     ...updatedOrder,
     status: 'completed' as const,
-    transactionHash: '8f3e2d1c9a1b0c2d',
     completedAt: Date.now(),
   }
   await notifyOrderUpdate(completedOrder, 'transfer_complete')
