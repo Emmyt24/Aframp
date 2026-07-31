@@ -5,38 +5,56 @@
 import { getMobileMoneyOptions, MOBILE_MONEY_AVAILABILITY } from '../regions'
 
 describe('getMobileMoneyOptions', () => {
-  it('returns both M-Pesa and MTN MoMo for Ghana (GH)', () => {
+  it('returns M-Pesa, MTN MoMo, and Flutterwave for Ghana (GH)', () => {
     const options = getMobileMoneyOptions('GH')
     const providers = options.map((o) => o.provider)
     expect(providers).toContain('mpesa')
     expect(providers).toContain('mtn_momo')
-    expect(options.length).toBe(2)
+    expect(providers).toContain('flutterwave')
+    expect(options.length).toBe(3)
   })
 
-  it('returns both M-Pesa and MTN MoMo for Uganda (UG)', () => {
+  it('returns M-Pesa, MTN MoMo, and Flutterwave for Uganda (UG)', () => {
     const options = getMobileMoneyOptions('UG')
     const providers = options.map((o) => o.provider)
     expect(providers).toContain('mpesa')
     expect(providers).toContain('mtn_momo')
+    expect(providers).toContain('flutterwave')
+    expect(options.length).toBe(3)
+  })
+
+  it('returns M-Pesa and Flutterwave for Kenya (KE)', () => {
+    const options = getMobileMoneyOptions('KE')
+    const providers = options.map((o) => o.provider)
+    expect(providers).toContain('mpesa')
+    expect(providers).toContain('flutterwave')
     expect(options.length).toBe(2)
   })
 
-  it('returns only M-Pesa for Kenya (KE)', () => {
-    const options = getMobileMoneyOptions('KE')
-    expect(options.length).toBe(1)
-    expect(options[0].provider).toBe('mpesa')
-  })
-
-  it('returns only M-Pesa for Tanzania (TZ)', () => {
+  it('returns M-Pesa and Flutterwave for Tanzania (TZ)', () => {
     const options = getMobileMoneyOptions('TZ')
-    expect(options.length).toBe(1)
-    expect(options[0].provider).toBe('mpesa')
+    const providers = options.map((o) => o.provider)
+    expect(providers).toContain('mpesa')
+    expect(providers).toContain('flutterwave')
+    expect(options.length).toBe(2)
   })
 
-  it('returns only MTN MoMo for Rwanda (RW)', () => {
+  it('returns MTN MoMo and Flutterwave for Rwanda (RW)', () => {
     const options = getMobileMoneyOptions('RW')
-    expect(options.length).toBe(1)
-    expect(options[0].provider).toBe('mtn_momo')
+    const providers = options.map((o) => o.provider)
+    expect(providers).toContain('mtn_momo')
+    expect(providers).toContain('flutterwave')
+    expect(options.length).toBe(2)
+  })
+
+  it('returns MTN MoMo and Flutterwave for Zambia (ZM) and Cameroon (CM)', () => {
+    for (const country of ['ZM', 'CM', 'CI']) {
+      const options = getMobileMoneyOptions(country)
+      const providers = options.map((o) => o.provider)
+      expect(providers).toContain('mtn_momo')
+      expect(providers).toContain('flutterwave')
+      expect(options.length).toBe(2)
+    }
   })
 
   it('returns an empty array for the US (no mobile money support)', () => {

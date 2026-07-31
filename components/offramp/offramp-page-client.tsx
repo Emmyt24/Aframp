@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
-const ORDER_KEY = 'offramp:latest-order'
 const LOCK_KEY = 'offramp:rate-lock'
 
 const assetUsdRates: Record<string, number> = {
@@ -44,7 +43,7 @@ export function OfframpPageClient() {
   const { options: assetOptions } = useOfframpBalances(address)
   const form = useOfframpForm(assetOptions, rateOverride)
   const selectedAsset = form.selectedAsset
-  const { rate, countdown, lastUpdated, isLoading, refresh } = useOfframpRate(
+  const { rate, countdown, lastUpdated, isLoading, refresh, sparkline } = useOfframpRate(
     selectedAsset.asset,
     selectedAsset.chain,
     form.state.fiatCurrency
@@ -94,15 +93,9 @@ export function OfframpPageClient() {
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   // Show the confirmation summary first; the order is only created after
   // the user explicitly confirms in the dialog.
-  const handleInitialSubmit = () => {
-    if (!form.isValid || isSubmitting) return
-    setShowConfirmDialog(true)
-  }
-
   const handleInitialSubmit = () => {
     if (!form.isValid || isSubmitting) return
     setShowConfirmDialog(true)
@@ -220,6 +213,7 @@ export function OfframpPageClient() {
             rateCountdown={countdown}
             rateUpdatedAt={lastUpdated || 0}
             isRateLoading={isLoading}
+            rateSparkline={sparkline}
             fiatAmount={form.fiatAmount}
             usdEquivalent={usdEquivalent}
             fees={form.fees}

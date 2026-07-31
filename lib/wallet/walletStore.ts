@@ -204,6 +204,17 @@ export const useWalletStore = create<WalletStore>()(
     }),
     {
       name: 'aframp-wallet',
+      // Use sessionStorage so the wallet session is cleared when the tab
+      // closes, matching the behaviour of walletSession (session.ts) and
+      // eliminating the localStorage vs sessionStorage split-brain (#296).
+      storage: {
+        getItem: (key: string) =>
+          typeof window !== 'undefined' ? window.sessionStorage.getItem(key) : null,
+        setItem: (key: string, value: string) =>
+          typeof window !== 'undefined' ? window.sessionStorage.setItem(key, value) : undefined,
+        removeItem: (key: string) =>
+          typeof window !== 'undefined' ? window.sessionStorage.removeItem(key) : undefined,
+      },
       partialize: (state: WalletStore) => ({
         publicKey: state.publicKey,
         network: state.network,

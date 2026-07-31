@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FiatCurrency } from '@/types/onramp'
 import type { OfframpAsset, OfframpChain } from '@/types/offramp'
+import { recordDataUpdate } from '@/lib/offline/connectivity'
 
-const RATE_REFRESH_SECONDS = 30
-const API_URL = '/api/exchange-rate'
+const SSE_URL = '/api/exchange-rate/stream'
+const MAX_SPARKLINE_POINTS = 30
 
 const coinGeckoIds: Record<OfframpAsset, string> = {
   cNGN: 'usd-coin',
@@ -27,61 +28,101 @@ export function useOfframpRate(
   chain: OfframpChain,
   fiatCurrency: FiatCurrency
 ) {
-  const [countdown, setCountdown] = useState(RATE_REFRESH_SECONDS)
+  const [countdown, setCountdown] = useState(30)
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [rate, setRate] = useState(0)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [sparkline, setSparkline] = useState<number[]>([])
+  const eventSourceRef = useRef<EventSource | null>(null)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const refresh = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch(API_URL)
-      if (!response.ok) throw new Error('Failed to fetch rates')
-      const data = await response.json()
+  const updateFromPayload = useCallback(
+    (payload: {
+      'usd-coin': Record<string, number>
+      stellar: Record<string, number>
+      tether: Record<string, number>
+      timestamp: number
+    }) => {
       const coinId = coinGeckoIds[asset]
       const fiatKey = fiatCurrencyKeys[fiatCurrency]
-      const baseRate = data[coinId]?.[fiatKey] ?? 0
+      const baseRate = payload[coinId]?.[fiatKey] ?? 0
+
+      if (!baseRate) return
 
       const chainMultiplier =
         chain === 'Ethereum' ? 1.01 : chain === 'Polygon' ? 0.995 : chain === 'Base' ? 1.002 : 1
 
-      setRate(baseRate * chainMultiplier)
-      setLastUpdated(Date.now())
-      setCountdown(RATE_REFRESH_SECONDS)
-    } catch (error) {
-      console.error('Offramp rate error:', error)
-      // Fallback to mock rate if API fails
-      const mockRate = asset === 'XLM' ? 180 : 1600
-      setRate(mockRate)
-      setLastUpdated(Date.now())
-      setCountdown(RATE_REFRESH_SECONDS)
-    } finally {
+      const finalRate = baseRate * chainMultiplier
+
+      recordDataUpdate(payload.timestamp)
+      setRate(finalRate)
+      setLastUpdated(payload.timestamp)
+      setCountdown(30)
       setIsLoading(false)
+
+      setSparkline((prev) => [...prev, finalRate].slice(-MAX_SPARKLINE_POINTS))
+    },
+    [asset, chain, fiatCurrency]
+  )
+
+  const connectSSE = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+      eventSourceRef.current = null
     }
-  }, [asset, chain, fiatCurrency])
+
+    const es = new EventSource(SSE_URL)
+    eventSourceRef.current = es
+
+    es.addEventListener('snapshot', (event) => {
+      const payload = JSON.parse(event.data)
+      updateFromPayload(payload)
+    })
+
+    es.addEventListener('update', (event) => {
+      const payload = JSON.parse(event.data)
+      updateFromPayload(payload)
+    })
+
+    es.addEventListener('error', (event) => {
+      const data = (event as MessageEvent).data
+      const parsed = data ? JSON.parse(data) : { message: 'Stream error' }
+      console.warn('Offramp SSE error:', parsed.message)
+    })
+
+    es.onerror = () => {
+      es.close()
+      reconnectTimerRef.current = setTimeout(() => {
+        connectSSE()
+      }, 5000)
+    }
+  }, [updateFromPayload])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current)
-
-    timerRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          refresh()
-          return RATE_REFRESH_SECONDS
-        }
-        return prev - 1
-      })
-    }, 1000)
+    connectSSE()
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current)
+        reconnectTimerRef.current = null
+      }
     }
-  }, [refresh])
+  }, [connectSSE])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 30))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const refresh = useCallback(() => {
+    connectSSE()
+  }, [connectSSE])
 
   return {
     rate,
@@ -89,5 +130,6 @@ export function useOfframpRate(
     lastUpdated,
     isLoading,
     refresh,
+    sparkline,
   }
 }
