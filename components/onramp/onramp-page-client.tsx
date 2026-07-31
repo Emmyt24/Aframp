@@ -15,22 +15,23 @@ import {
 } from '@/components/ui/dialog'
 import { OnrampCalculator } from '@/components/onramp/onramp-calculator'
 import { RecentTransactions } from '@/components/onramp/recent-transactions'
+import { OnrampFeeSummary } from '@/components/onramp/onramp-fee-summary'
 import { useExchangeRate } from '@/hooks/use-exchange-rate'
 import { useOnrampForm } from '@/hooks/use-onramp-form'
 import { useWalletConnection } from '@/hooks/use-wallet-connection'
 import { OnrampTestUtils } from '@/components/onramp/onramp-test-utils'
 import type { CryptoAsset, FiatCurrency } from '@/types/onramp'
-import { formatCurrency, isValidStellarAddress } from '@/lib/calculations'
+import { isValidStellarAddress } from '@/lib/calculations'
 import type { OnrampOrder } from '@/types/onramp'
+import { csrfHeaders } from '@/lib/security/csrf-client'
 import { Button } from '@/components/ui/button' // Added missing import for Button
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   getAppliedReferralCode,
-  isReferralDiscountConsumed,
   calcReferralDiscount,
-  markReferralDiscountConsumed,
   setAppliedReferralCode,
 } from '@/lib/referral'
+import { useReferral } from '@/hooks/use-referral'
 
 const ORDER_KEY = 'onramp:latest-order'
 
@@ -49,12 +50,14 @@ export function OnrampPageClient() {
   } =
     useWalletConnection()
   const walletConnected = Boolean(address) || connected || storeConnected || Boolean(publicKey)
+  const referralWalletAddress = address || publicKey || ''
+  const { discountActive, discountConsumed, consumeDiscount } = useReferral(referralWalletAddress)
   const [walletModalOpen, setWalletModalOpen] = useState(false)
   const [disconnectModalOpen, setDisconnectModalOpen] = useState(false)
   const [rateOverride, setRateOverride] = useState(0)
 
   const form = useOnrampForm(rateOverride, walletConnected)
-  const { data, countdown, warning, error, isLoading, displayRate, refresh } = useExchangeRate(
+  const { data, countdown, warning, error, isLoading, displayRate, refresh, sparkline } = useExchangeRate(
     form.state.fiatCurrency,
     form.state.cryptoAsset
   )
@@ -85,10 +88,10 @@ export function OnrampPageClient() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const refCode = params.get('ref')
-    if (refCode && !getAppliedReferralCode() && !isReferralDiscountConsumed()) {
+    if (refCode && !getAppliedReferralCode() && !discountConsumed) {
       setAppliedReferralCode(refCode.toUpperCase())
     }
-  }, [])
+  }, [discountConsumed])
 
   // Only show modal if definitely not connected after loading
   useEffect(() => {
@@ -121,39 +124,54 @@ export function OnrampPageClient() {
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   // Show the confirmation summary first; the order is only created after
   // the user explicitly confirms in the dialog.
   const handleInitialSubmit = () => {
     if (!form.isValid || isSubmitting) return
-    setShowConfirmDialog(true)
-  }
-
-  const handleInitialSubmit = () => {
-    if (!form.isValid || isSubmitting) return
+    analytics.track('onramp_initiated', {
+      amount: form.amountValue,
+      fiatCurrency: form.state.fiatCurrency,
+      cryptoAsset: form.state.cryptoAsset,
+      paymentMethod: form.state.paymentMethod,
+    })
     setShowConfirmDialog(true)
   }
 
   const handleSubmit = async () => {
-    // For demo purposes, auto-connect a mock wallet if none exists
-    let walletAddress = address
     if (!isValidStellarAddress(address)) {
-      const mockAddress = 'GAXYZ123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789ABCDEFG'
-      updateAddress(mockAddress)
-      walletAddress = mockAddress
+      setWalletModalOpen(true)
+      return
     }
 
+    const walletAddress = address
+
     if (!form.isValid || isSubmitting) {
+      return
+    }
+
+    // Guard: refuse to create an order if the live exchange rate is unavailable.
+    // Using a stale or hardcoded fallback rate would expose users or the platform
+    // to incorrect pricing (see issue #271).
+    if (!data?.rate) {
+      alert(
+        'Exchange rate is currently unavailable. Please wait for the rate to load or refresh the page before proceeding.'
+      )
       return
     }
 
     setIsSubmitting(true)
 
     try {
-      // Apply referral discount (10% off fees) on first ramp
+      // Apply referral discount (10% off fees) on first ramp. Consumption is
+      // reserved server-side up front so the one-time discount can't be
+      // replayed by racing requests or clearing client-side state.
       const referralCode = getAppliedReferralCode()
-      const hasDiscount = !!referralCode && !isReferralDiscountConsumed()
+      let hasDiscount = false
+      if (referralCode && discountActive) {
+        const consumeError = await consumeDiscount()
+        hasDiscount = !consumeError
+      }
       const reward = hasDiscount ? calcReferralDiscount(form.fees.totalFees) : null
       const discountedFees = reward
         ? {
@@ -169,7 +187,7 @@ export function OnrampPageClient() {
         cryptoAsset: form.state.cryptoAsset,
         paymentMethod: form.state.paymentMethod,
         amount: form.amountValue,
-        exchangeRate: data?.rate || 1600, // Fallback rate for demo
+        exchangeRate: data.rate,
         cryptoAmount: form.cryptoAmount,
         fees: discountedFees,
         walletAddress: walletAddress,
@@ -180,6 +198,7 @@ export function OnrampPageClient() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...csrfHeaders(),
         },
         body: JSON.stringify(orderData),
       })
@@ -191,10 +210,18 @@ export function OnrampPageClient() {
       const result = await response.json()
       const order: OnrampOrder = result.order
 
-      if (hasDiscount) markReferralDiscountConsumed()
-
       localStorage.setItem(ORDER_KEY, JSON.stringify(order))
       localStorage.setItem(`onramp:order:${order.id}`, JSON.stringify(order))
+
+      analytics.track('onramp_order_created', {
+        orderId: order.id,
+        amount: order.amount,
+        fiatCurrency: order.fiatCurrency,
+        cryptoAsset: order.cryptoAsset,
+        cryptoAmount: order.cryptoAmount,
+        paymentMethod: order.paymentMethod,
+        hasReferralDiscount: hasDiscount,
+      })
 
       setShowConfirmDialog(false)
 
@@ -210,13 +237,6 @@ export function OnrampPageClient() {
   const handleDisconnect = () => {
     setDisconnectModalOpen(true)
   }
-
-  const processingFeeLabel =
-    form.state.paymentMethod === 'bank_transfer'
-      ? 'FREE'
-      : form.state.paymentMethod === 'card'
-        ? `${formatCurrency(form.fees.processingFee, form.state.fiatCurrency)} (1.5%)`
-        : `${formatCurrency(form.fees.processingFee, form.state.fiatCurrency)} (0.5%)`
 
   if (loading) {
     return (
@@ -283,6 +303,7 @@ export function OnrampPageClient() {
             exchangeWarning={warning}
             exchangeError={error}
             exchangeLoading={isLoading}
+            exchangeSparkline={sparkline}
             onRefreshRate={refresh}
             onAmountChange={form.setAmountInput}
             onFiatChange={(value) => form.setFiatCurrency(value as FiatCurrency)}
@@ -332,7 +353,7 @@ export function OnrampPageClient() {
                     {formatCurrency(form.fees.networkFee, form.state.fiatCurrency)}
                   </span>
                 </div>
-                {!isReferralDiscountConsumed() && getAppliedReferralCode() && (
+                {discountActive && (
                   <div className="flex items-center justify-between text-green-600 dark:text-green-400">
                     <span>Referral discount (10%)</span>
                     <span>
@@ -344,7 +365,7 @@ export function OnrampPageClient() {
                   <span>Total cost</span>
                   <span className="font-semibold">
                     {formatCurrency(
-                      !isReferralDiscountConsumed() && getAppliedReferralCode()
+                      discountActive
                         ? form.fees.totalCost - form.fees.totalFees * 0.1
                         : form.fees.totalCost,
                       form.state.fiatCurrency
@@ -352,12 +373,6 @@ export function OnrampPageClient() {
                   </span>
                 </div>
               </div>
-              <Link
-                href="/referral"
-                className="mt-4 block text-xs text-primary hover:underline"
-              >
-                🎁 Refer a friend → they get 10% off their first ramp
-              </Link>
             </div>
           </div>
         </div>
@@ -403,8 +418,7 @@ export function OnrampPageClient() {
             </Button>
           </div>
 
-          {/* Test Utils - Remove in production */}
-          <OnrampTestUtils />
+          {process.env.NODE_ENV === 'development' && <OnrampTestUtils />}
         </DialogContent>
       </Dialog>
 

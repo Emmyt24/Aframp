@@ -1,8 +1,10 @@
 /**
  * Referral program core logic.
  *
- * Storage: localStorage (client) + in-memory Map (server/API mock).
- * In production, replace the Map with a real DB.
+ * Storage: localStorage (client, for non-sensitive UI state like the applied
+ * code) + server-side store for discount consumption (see lib/referral/store.ts
+ * and /api/referral/consume) — consumption must live server-side since it
+ * gates a real financial discount and can't be trusted from the client.
  */
 
 export const REFERRAL_DISCOUNT_PCT = 10 // 10% off first ramp fees
@@ -45,9 +47,10 @@ export function calcReferralDiscount(totalFees: number): ReferralReward {
 }
 
 // ── localStorage helpers (client-side) ──────────────────────────────────────
+// Non-sensitive UI state only. Discount consumption is tracked server-side —
+// see the `useReferral` hook and /api/referral/consume.
 
 const LS_APPLIED_KEY = 'referral:applied'   // code the current user applied
-const LS_USED_KEY = 'referral:used'          // whether first-ramp discount was consumed
 
 export function getAppliedReferralCode(): string | null {
   if (typeof window === 'undefined') return null
@@ -57,14 +60,4 @@ export function getAppliedReferralCode(): string | null {
 export function setAppliedReferralCode(code: string) {
   if (typeof window === 'undefined') return
   localStorage.setItem(LS_APPLIED_KEY, code)
-}
-
-export function isReferralDiscountConsumed(): boolean {
-  if (typeof window === 'undefined') return false
-  return localStorage.getItem(LS_USED_KEY) === 'true'
-}
-
-export function markReferralDiscountConsumed() {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(LS_USED_KEY, 'true')
 }
