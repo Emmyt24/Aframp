@@ -46,6 +46,18 @@ export async function middleware(request: NextRequest) {
     )
   }
 
+  let requestHeaders = request.headers
+
+  if (pathname.startsWith('/api') && !isPublicApiRoute(pathname)) {
+    const session = await verifySessionToken(request.cookies.get(SESSION_COOKIE_NAME)?.value)
+    if (!session) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-user-id', session.sub)
+  }
+
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
 
   const { success, limit, remaining, reset } = await ratelimit.limit(ip)
@@ -68,7 +80,7 @@ export async function middleware(request: NextRequest) {
     )
   }
 
-  const response = NextResponse.next()
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
   response.headers.set('X-RateLimit-Limit', String(limit))
   response.headers.set('X-RateLimit-Remaining', String(remaining))
   response.headers.set('X-RateLimit-Reset', String(reset))

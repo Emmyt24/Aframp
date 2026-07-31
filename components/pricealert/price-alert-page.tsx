@@ -18,9 +18,14 @@ interface PriceAlertStore {
   currentPrice: number
 }
 
-const INITIAL_RULE = {
+const INITIAL_RULE: {
+  email: string
+  direction: PriceAlertDirection
+  threshold: number
+  channels: { email: boolean; push: boolean }
+} = {
   email: '',
-  direction: 'below' as const,
+  direction: 'below',
   threshold: 1000,
   channels: {
     email: true,
