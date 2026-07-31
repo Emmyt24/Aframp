@@ -1,4 +1,5 @@
-import withPWA from 'next-pwa'
+import withPWAInit from 'next-pwa'
+import defaultRuntimeCaching from 'next-pwa/cache.js'
 import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
@@ -62,28 +63,44 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'Content-Security-Policy',   value: csp },
-          { key: 'X-Content-Type-Options',    value: 'nosniff' },
-          { key: 'X-Frame-Options',           value: 'DENY' },
-          { key: 'X-XSS-Protection',          value: '1; mode=block' },
-          { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
     ]
   },
 }
 
-// next-pwa@2.0.2 doesn't curry — it takes the full Next config (with PWA
-// options nested under `pwa`) and returns the final config directly.
-const configWithPWA = withPWA({
-  pwa: {
-    dest: 'public',
-    register: true,
-    skipWaiting: true,
-    disable: process.env.NODE_ENV === 'development',
-  },
-  ...nextConfig,
+const withPWA = withPWAInit({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  reloadOnOnline: false,
+  disable: process.env.NODE_ENV === 'development',
+  runtimeCaching: [
+    {
+      urlPattern: /\/api\/(?:exchange-rate|rates)(?:\/)?(?:\?.*)?$/,
+      handler: 'StaleWhileRevalidate',
+      method: 'GET',
+      options: {
+        cacheName: 'exchange-rates',
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+        expiration: {
+          maxEntries: 8,
+          maxAgeSeconds: 24 * 60 * 60,
+          purgeOnQuotaError: true,
+        },
+      },
+    },
+    ...defaultRuntimeCaching,
+  ],
 })
+
+const configWithPWA = withPWA(nextConfig)
 
 export default withSentryConfig(configWithPWA)

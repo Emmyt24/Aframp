@@ -9,6 +9,7 @@ import {
   writeCachedOrder,
 } from '@/lib/orders/order-client'
 import type { StoredOrder } from '@/lib/orders/types'
+import { getQueuedOrderSyncCount } from '@/lib/offline/order-sync-queue'
 
 const WALLET = 'GAWALLETONE'
 
@@ -89,6 +90,14 @@ describe('persistOrder', () => {
 
     await expect(persistOrder('onramp', ORDER, WALLET)).resolves.toBe(false)
     expect(readCachedOrder('onramp', 'order-1')).toEqual(ORDER)
+    expect(getQueuedOrderSyncCount()).toBe(1)
+  })
+
+  it('queues order sync when the server has a transient failure', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({}, { ok: false, status: 503 }))
+
+    await expect(persistOrder('onramp', ORDER, WALLET)).resolves.toBe(false)
+    expect(getQueuedOrderSyncCount()).toBe(1)
   })
 
   it('skips the request when there is no wallet address', async () => {
@@ -190,5 +199,6 @@ describe('patchOrder', () => {
 
     await expect(patchOrder('onramp', ORDER, WALLET)).resolves.toBe(false)
     expect(readCachedOrder('onramp', 'order-1')).toEqual(ORDER)
+    expect(getQueuedOrderSyncCount()).toBe(1)
   })
 })
