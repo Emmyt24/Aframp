@@ -1,5 +1,6 @@
 import * as StellarSdk from '@stellar/stellar-sdk'
 import type { FreighterNetwork } from '@/lib/wallet'
+import { captureError, log } from '@/lib/observability'
 
 const { Asset, Networks, Operation, TransactionBuilder } = StellarSdk
 // Server is accessed as a named export under the default namespace in the Stellar SDK
@@ -98,62 +99,63 @@ export async function findSwapPath(
     ...(dest.isNative() ? {} : { destination_asset_code: dest.getCode(), destination_asset_issuer: dest.getIssuer() }),
   })
 
-  const res = await fetch(`${horizonUrl}/paths/strict-send?${params}`)
-  if (!res.ok) throw new Error(`Path-finding failed: ${res.status}`)
+  try {
+    const res = await fetch(`${horizonUrl}/paths/strict-send?${params}`)
+    if (!res.ok) throw new Error(`Path-finding failed: ${res.status}`)
 
-  const data = await res.json()
-  const records: Array<{
-    destination_amount: string
-    source_amount: string
-    path: Array<{ asset_type: string; asset_code?: string; asset_issuer?: string }>
-  }> = data._embedded?.records ?? []
+    const data = await res.json()
+    const records: Array<{
+      destination_amount: string
+      path: Array<{ asset_type: string; asset_code?: string; asset_issuer?: string }>
+    }> = data._embedded?.records ?? []
 
-  if (records.length === 0) throw new Error('No swap path found for this pair')
+    if (records.length === 0) throw new Error('No swap path found for this pair')
 
-  // Map to our SwapPath type and sort best (highest dest amount) first
-  const paths: SwapPath[] = records.map((r) => ({
-    sourceAmount: r.source_amount,
-    destinationAmount: r.destination_amount,
-    path: r.path.map((p) =>
+    // Best path = highest destination amount
+    const best = records.reduce((a, b) =>
+      parseFloat(a.destination_amount) >= parseFloat(b.destination_amount) ? a : b
+    )
+
+    const toAmount = best.destination_amount
+    const minReceived = (parseFloat(toAmount) * (1 - slippagePct / 100)).toFixed(7)
+    const rate = (parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(7)
+
+    const path = best.path.map((p) =>
       p.asset_type === 'native' ? Asset.native() : new Asset(p.asset_code!, p.asset_issuer!)
-    ),
-  }))
+    )
 
-  paths.sort((a, b) => parseFloat(b.destinationAmount) - parseFloat(a.destinationAmount))
+    log.info('stellar.swap.simulated', {
+      fromAsset,
+      toAsset,
+      fromAmount,
+      toAmount,
+      rate,
+      network: network ?? 'PUBLIC',
+    })
 
-  return paths
-}
-
-/**
- * Simulate a swap using Stellar DEX strict-receive path payment.
- * Returns the best route and expected output — equivalent to 1inch/Jupiter quote.
- */
-export async function simulateSwap(
-  fromAsset: SwapAsset,
-  toAsset: SwapAsset,
-  fromAmount: string,
-  slippagePct: number,
-  network: FreighterNetwork | null
-): Promise<SwapSimulation> {
-  // Use findSwapPath to get the optimal DEX route
-  const paths = await findSwapPath(fromAsset, toAsset, fromAmount, network)
-
-  // Best path is first after sorting
-  const best = paths[0]
-  const toAmount = best.destinationAmount
-  const minReceived = (parseFloat(toAmount) * (1 - slippagePct / 100)).toFixed(7)
-  const rate = (parseFloat(toAmount) / parseFloat(fromAmount)).toFixed(7)
-
-  return {
-    fromAsset,
-    toAsset,
-    fromAmount,
-    toAmount,
-    path: best.path,
-    minReceived,
-    rate,
-    fee: '100', // base fee in stroops
-    slippagePct,
+    return {
+      fromAsset,
+      toAsset,
+      fromAmount,
+      toAmount,
+      path,
+      minReceived,
+      rate,
+      fee: '100', // base fee in stroops
+      slippagePct,
+    }
+  } catch (err) {
+    captureError(err, {
+      tags: { domain: 'stellar', operation: 'swap-simulate' },
+      extra: { fromAsset, toAsset, fromAmount, network: network ?? 'PUBLIC' },
+    })
+    log.error('stellar.swap.simulate.failed', {
+      error: err instanceof Error ? err.message : String(err),
+      fromAsset,
+      toAsset,
+      network: network ?? 'PUBLIC',
+    })
+    throw err
   }
 }
 
@@ -169,28 +171,53 @@ export async function buildSwapXdr(
   const horizonUrl = getHorizon(network)
   const server = new Server(horizonUrl)
 
-  const sourceAccount = await server.loadAccount(sourcePublicKey)
-  const fee = await server.fetchBaseFee()
+  try {
+    const sourceAccount = await server.loadAccount(sourcePublicKey)
+    const fee = await server.fetchBaseFee()
 
-  const sendAsset = getAsset(sim.fromAsset)
-  const destAsset = getAsset(sim.toAsset)
+    const sendAsset = getAsset(sim.fromAsset)
+    const destAsset = getAsset(sim.toAsset)
 
-  const tx = new TransactionBuilder(sourceAccount, {
-    fee: fee.toString(),
-    networkPassphrase: network === 'TESTNET' ? Networks.TESTNET : Networks.PUBLIC,
-  })
-    .addOperation(
-      Operation.pathPaymentStrictSend({
-        sendAsset,
-        sendAmount: sim.fromAmount,
-        destination: sourcePublicKey, // self-swap (swap to own wallet)
-        destAsset,
-        destMin: sim.minReceived,
-        path: sim.path,
-      })
-    )
-    .setTimeout(300)
-    .build()
+    const tx = new TransactionBuilder(sourceAccount, {
+      fee: fee.toString(),
+      networkPassphrase: network === 'TESTNET' ? Networks.TESTNET : Networks.PUBLIC,
+    })
+      .addOperation(
+        Operation.pathPaymentStrictSend({
+          sendAsset,
+          sendAmount: sim.fromAmount,
+          destination: sourcePublicKey, // self-swap (swap to own wallet)
+          destAsset,
+          destMin: sim.minReceived,
+          path: sim.path,
+        })
+      )
+      .setTimeout(300)
+      .build()
 
-  return tx.toXDR()
+    log.info('stellar.swap.xdr_built', {
+      fromAsset: sim.fromAsset,
+      toAsset: sim.toAsset,
+      fromAmount: sim.fromAmount,
+      network: network ?? 'PUBLIC',
+    })
+
+    return tx.toXDR()
+  } catch (err) {
+    captureError(err, {
+      tags: { domain: 'stellar', operation: 'swap-build-xdr' },
+      extra: {
+        fromAsset: sim.fromAsset,
+        toAsset: sim.toAsset,
+        fromAmount: sim.fromAmount,
+        network: network ?? 'PUBLIC',
+      },
+    })
+    log.error('stellar.swap.xdr_build.failed', {
+      error: err instanceof Error ? err.message : String(err),
+      fromAsset: sim.fromAsset,
+      toAsset: sim.toAsset,
+    })
+    throw err
+  }
 }

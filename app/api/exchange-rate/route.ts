@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { redis } from '@/lib/redis'
+import { captureError } from '@/lib/observability'
 
 const COINGECKO_URL =
   'https://api.coingecko.com/api/v3/simple/price?ids=usd-coin,stellar&vs_currencies=ngn,kes,ghs,zar,ugx'
@@ -35,18 +35,12 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to fetch rates' }, { status: response.status })
     }
 
-    const data = (await response.json()) as ExchangeRates
-
-    try {
-      await redis.set(CACHE_KEY, data, { ex: CACHE_TTL_SECONDS })
-    } catch {
-      // Return fresh rates even when the cache write fails.
-    }
-
-    return NextResponse.json(data, {
-      headers: { 'X-Cache': 'MISS' },
+    const data = await response.json()
+    return NextResponse.json(data)
+  } catch (err) {
+    captureError(err, {
+      tags: { domain: 'rates', operation: 'exchange-rate-fetch' },
     })
-  } catch {
     return NextResponse.json({ error: 'Unable to fetch exchange rates' }, { status: 500 })
   }
 }

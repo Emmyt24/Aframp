@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { redis } from '@/lib/redis'
+import { captureError } from '@/lib/observability'
 
 const COINGECKO_ETH_URL =
   'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd'
@@ -42,6 +42,15 @@ export async function GET() {
 
     return NextResponse.json(data, { headers: { 'X-Cache': 'MISS' } })
   } catch (err) {
+    // Serve stale cache as fallback rather than failing
+    if (cache) {
+      return NextResponse.json(cache.data, {
+        headers: { 'X-Cache': 'STALE' },
+        status: 200,
+      })
+    }
+
+    captureError(err, { tags: { domain: 'rates', operation: 'eth-price-fetch' } })
     const message = err instanceof Error ? err.message : 'Failed to fetch rates'
     return NextResponse.json({ error: message }, { status: 502 })
   }

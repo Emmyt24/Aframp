@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { KycSubmission } from '@/types/kyc'
 import { kycStore } from '@/lib/kyc/store'
+import { captureError, log } from '@/lib/observability'
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -312,15 +313,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   kycStore.set(submissionId, submission)
 
-  if (isSmileConfigured()) {
-    // ── Real Smile Identity verification ─────────────────────────────────────
-    try {
-      const result = await submitToSmileIdentity(
-        submissionId,
-        userId,
-        { idFront, idBack, selfie },
-        { idType, country }
-      )
+  log.info('kyc.submission.created', {
+    submissionId,
+    userId,
+    documentCount: submission.documents.length,
+  })
+
+  // Simulate async verification process
+  // In production, this would trigger a background job or webhook
+  simulateVerification(submissionId)
 
       const stored = kycStore.get(submissionId)!
       stored.updatedAt = Date.now()

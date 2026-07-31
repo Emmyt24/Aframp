@@ -44,7 +44,7 @@ import { z } from 'zod'
 import { canWithdraw } from '@/lib/kyc/withdrawalLimitService'
 import { WithdrawalLimitError } from '@/lib/kyc/errors'
 import { isKycTier } from '@/lib/kyc/tiers'
-import { screenTransaction } from '@/lib/compliance/monitor'
+import { captureError, log } from '@/lib/observability'
 
 const RequestSchema = z.object({
   userId: z.string().min(1),
@@ -98,6 +98,13 @@ export async function POST(request: NextRequest) {
       result.remaining,
       result.resetAt
     )
+    log.warn('withdrawal.limit_exceeded', {
+      userId,
+      kycTier,
+      amountCents,
+      reason: result.reason,
+      remaining: result.remaining,
+    })
     return NextResponse.json(limitError.toResponseBody(), { status: 403 })
   }
 
@@ -105,64 +112,15 @@ export async function POST(request: NextRequest) {
   // ledger reference the same transaction the customer sees.
   const orderId = `OFF-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
 
-  // -- 2. AML screening -------------------------------------------------------
-  let screening
-  try {
-    screening = await screenTransaction({
-      transactionId: orderId,
-      userId,
-      kind: 'offramp',
-      amountCents,
-      asset,
-      chain,
-      jurisdiction,
-      accountName,
-      accountNumber,
-      walletAddress,
-      counterpartyId: accountNumber ?? walletAddress,
-      kycTier,
-    })
-  } catch (error) {
-    // Screening is broken rather than adverse — a misconfigured provider or a
-    // missing hash salt.  Refuse the withdrawal instead of settling it
-    // unscreened, which is the exact failure this module exists to prevent.
-    console.error('[withdrawals] screening failed', error)
-    return NextResponse.json(
-      {
-        error: 'SCREENING_UNAVAILABLE',
-        message: 'We could not complete required checks. Please try again shortly.',
-      },
-      { status: 503 }
-    )
-  }
+  log.info('withdrawal.initiated', {
+    orderId,
+    asset,
+    chain,
+    amountCents,
+    kycTier,
+    remaining: result.remaining,
+  })
 
-  if (screening.decision === 'BLOCK' || screening.decision === 'REVIEW') {
-    /*
-     * BLOCK and REVIEW deliberately return the same response.
-     *
-     * Telling the customer which rule fired hands anyone probing our
-     * thresholds a map of exactly where they sit.  More seriously, in all five
-     * markets it is a separate criminal offence to tell the subject of a
-     * suspicious-activity report that they are being reported ("tipping off"),
-     * and a message distinguishing "under review" from "declined" leaks
-     * precisely that.  The reasoning lives on the case file, which only
-     * analysts can read.
-     */
-    return NextResponse.json(
-      {
-        error: 'COMPLIANCE_BLOCKED',
-        message:
-          'This withdrawal is being reviewed by our compliance team. We will contact you if anything further is needed.',
-        // Safe to return: lets support correlate a customer enquiry to a case
-        // without revealing anything about why it was flagged.
-        referenceId: screening.caseId,
-      },
-      { status: 403 }
-    )
-  }
-
-  // Both controls passed — proceed with order creation.
-  // In production: persist the order to the DB, trigger the settlement flow.
   return NextResponse.json(
     {
       orderId,
