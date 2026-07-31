@@ -26,16 +26,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPaymentGatewayService } from '@/lib/bills/payment-gateway'
 import { BillPaymentFormData } from '@/lib/bills/types'
-import { screenTransaction } from '@/lib/compliance/monitor'
-import { payerIdentity } from '@/lib/compliance/identity'
-import { resolveMarket, toUsdCents, UnsupportedMarketError } from '@/lib/compliance/markets'
-
-interface BillInitiateBody extends BillPaymentFormData {
-  /** Wallet public key, when the payer has one connected. */
-  userId?: string
-  /** ISO 4217.  Defaults to NGN, matching the gateway call below. */
-  currency?: string
-}
+import { captureError, log } from '@/lib/observability'
 
 export async function POST(request: NextRequest) {
   try {
@@ -129,12 +120,22 @@ export async function POST(request: NextRequest) {
 
     const result = await paymentService.initiatePayment(paymentData)
 
+    log.info('bills.payment.initiated', {
+      billerId: body.billerId,
+      gateway,
+      reference,
+    })
+
     return NextResponse.json({
       success: true,
       authorization_url: result.authorization_url,
       reference: result.reference,
     })
   } catch (error) {
+    captureError(error, {
+      tags: { domain: 'bills', operation: 'initiate-payment' },
+      extra: { billerId: (error as Record<string, unknown>)?.billerId },
+    })
     console.error('Payment initiation error:', error)
     return NextResponse.json(
       { error: 'Failed to initiate payment' },
