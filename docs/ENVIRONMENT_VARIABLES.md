@@ -189,6 +189,35 @@ FLUTTERWAVE_ENCRYPTION_KEY=FLWSECKxxxxxxxxxxxxxxxx
 3. Copy Test keys for development
 4. Request Live keys after business verification
 
+##### `FLUTTERWAVE_SECRET_HASH`
+
+**Type:** String  
+**Required:** For Flutterwave webhooks  
+**Visibility:** Server-side only (secret)
+
+The secret hash configured under Flutterwave Settings → Webhooks. Used by
+`app/api/webhooks/flutterwave` to verify that incoming webhook requests
+actually came from Flutterwave (see `FlutterwaveGateway.verifyWebhookSignature`
+in `lib/bills/payment-gateway.ts`).
+
+```env
+FLUTTERWAVE_SECRET_HASH=your_webhook_secret_hash_here
+```
+
+##### `PAYMENT_GATEWAY`
+
+**Type:** String (`paystack` | `flutterwave`)  
+**Required:** No  
+**Default:** `paystack`
+
+Fallback gateway used by `getPaymentGatewayService()` (`lib/bills/payment-gateway.ts`)
+when a request doesn't pass an explicit gateway and no per-country default
+applies (see `COUNTRY_GATEWAY_MAP` in `lib/bills/gateway-config.ts`).
+
+```env
+PAYMENT_GATEWAY=paystack
+```
+
 ---
 
 ### Optional Configuration

@@ -48,21 +48,17 @@ export const useWalletConnect = () => {
       // Freighter connection
       if (walletId === 'freighter') {
         if (!window.freighterApi?.getPublicKey) {
-          address = generateMockAddress(walletId)
-          return { address, walletName }
+          return { address: generateMockAddress(walletId), walletName }
         }
         try {
-          address = await window.freighterApi.getPublicKey()
+          const address = await window.freighterApi.getPublicKey()
+          return { address, walletName }
         } catch (error) {
-          if (error instanceof Error) {
-            if (error.message.toLowerCase().includes('user rejected')) {
-              throw new Error(`Freighter connection cancelled`)
-            }
-            address = generateMockAddress(walletId)
-            return { address, walletName }
+          if (error instanceof Error && error.message.toLowerCase().includes('user rejected')) {
+            throw new Error(`Freighter connection cancelled`)
           }
+          return { address: generateMockAddress(walletId), walletName }
         }
-        return { address: generateMockAddress(walletId), walletName }
       }
 
       // Coinbase Wallet

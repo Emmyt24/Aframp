@@ -1,11 +1,23 @@
-import Server, { Asset, Memo, Networks, Operation, TransactionBuilder } from '@stellar/stellar-sdk'
+import * as StellarSdk from '@stellar/stellar-sdk'
 import { signTransactionWithFreighter } from '@/lib/wallet/freighter'
 import type { FreighterNetwork } from '@/lib/wallet'
+
+const { Asset, Memo, Networks, Operation, TransactionBuilder, Server } = StellarSdk
 
 const HORIZON_URLS: Record<string, string> = {
   PUBLIC: 'https://horizon.stellar.org',
   TESTNET: 'https://horizon-testnet.stellar.org',
 }
+
+/**
+ * Aframp escrow address. Payments flow:
+ *   user wallet → AFRAMP_ESCROW_ADDRESS
+ * then the backend disburses fiat after confirming the on-chain receipt.
+ * Override via NEXT_PUBLIC_ESCROW_ADDRESS for non-prod environments.
+ */
+export const AFRAMP_ESCROW_ADDRESS =
+  (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_ESCROW_ADDRESS) ||
+  'GAHJJJKMOKYE4RVPZEWZTKH5FVI4PA3VL7GK2LFNUBSGBV3TNFWQQE'
 
 /** Validate a Stellar public key (G + 55 base32 chars). */
 export function isValidStellarAddress(address: string): boolean {
@@ -19,6 +31,57 @@ export async function estimateStellarFee(network: FreighterNetwork | null): Prom
   const fee = await server.fetchBaseFee()
   // base fee is in stroops (1 XLM = 10_000_000 stroops)
   return (fee / 10_000_000).toFixed(7)
+}
+
+export interface BuildEscrowPaymentParams {
+  sourcePublicKey: string
+  /** Amount of the crypto asset being sent (e.g. "31.25"). */
+  amount: string
+  assetCode: string
+  assetIssuer?: string
+  /** Order ID used as the transaction memo so the backend can reconcile. */
+  orderId: string
+  network: FreighterNetwork | null
+}
+
+/**
+ * Build an unsigned XDR for a payment from the user's wallet to the Aframp
+ * escrow address.  The caller must sign this via Freighter and submit it.
+ */
+export async function buildEscrowPaymentXdr(
+  params: BuildEscrowPaymentParams
+): Promise<string> {
+  const { sourcePublicKey, amount, assetCode, assetIssuer, orderId, network } = params
+
+  const horizonUrl = HORIZON_URLS[network ?? 'PUBLIC'] ?? HORIZON_URLS.PUBLIC
+  const server = new Server(horizonUrl)
+  const networkPassphrase = network === 'TESTNET' ? Networks.TESTNET : Networks.PUBLIC
+
+  const sourceAccount = await server.loadAccount(sourcePublicKey)
+  const fee = await server.fetchBaseFee()
+
+  const asset =
+    assetCode === 'XLM'
+      ? Asset.native()
+      : new Asset(assetCode, assetIssuer ?? sourcePublicKey)
+
+  const tx = new TransactionBuilder(sourceAccount, {
+    fee: fee.toString(),
+    networkPassphrase,
+  })
+    .addOperation(
+      Operation.payment({
+        destination: AFRAMP_ESCROW_ADDRESS,
+        asset,
+        amount,
+      })
+    )
+    // Memo encodes the order ID so the backend can reconcile this tx
+    .addMemo(Memo.text(orderId.slice(0, 28)))
+    .setTimeout(300)
+    .build()
+
+  return tx.toXDR()
 }
 
 export interface SendP2PParams {
