@@ -1,5 +1,49 @@
+import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { getPaymentGatewayService } from '@/lib/bills/payment-gateway'
+
+/**
+ * POST /api/bills/verify — Paystack webhook receiver.
+ *
+ * Paystack signs every webhook body with HMAC-SHA512 using the account's
+ * secret key, sent in the `x-paystack-signature` header. Without verifying
+ * this signature, anyone who knows a payment reference could POST a forged
+ * "charge.success" event and trigger payment confirmation without paying.
+ */
+export async function POST(request: NextRequest) {
+  const signature = request.headers.get('x-paystack-signature')
+  const secret = process.env.PAYSTACK_SECRET_KEY
+
+  if (!signature || !secret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  // Hash the raw body — hashing a re-serialized/parsed body can produce a
+  // different byte sequence than what Paystack signed.
+  const rawBody = await request.text()
+  const expectedHash = crypto.createHmac('sha512', secret).update(rawBody).digest('hex')
+
+  const expectedBuffer = Buffer.from(expectedHash, 'utf8')
+  const signatureBuffer = Buffer.from(signature, 'utf8')
+  const isValid =
+    expectedBuffer.length === signatureBuffer.length &&
+    crypto.timingSafeEqual(expectedBuffer, signatureBuffer)
+
+  if (!isValid) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const event = JSON.parse(rawBody)
+
+  if (event.event === 'charge.success') {
+    // Here you would typically:
+    // 1. Update your database with the confirmed transaction
+    // 2. Trigger the actual bill payment to the biller
+    // 3. Send confirmation email/SMS to customer
+  }
+
+  return NextResponse.json({ received: true })
+}
 
 export async function GET(request: NextRequest) {
   try {

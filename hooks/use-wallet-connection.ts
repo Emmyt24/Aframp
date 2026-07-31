@@ -71,11 +71,11 @@ export function useWalletConnection() {
 
     setStoredAddress(nextAddress)
     setStoredConnected(true)
-    localStorage.setItem(STORAGE_ADDRESS, nextAddress)
+    walletSession.setAddress(nextAddress)
 
     setStoredAddresses((prev) => {
       const next = [nextAddress, ...prev.filter((item) => item !== nextAddress)]
-      localStorage.setItem(STORAGE_WALLET_LIST, JSON.stringify(next))
+      walletSession.setAddressList(next)
       return next
     })
 
@@ -86,18 +86,18 @@ export function useWalletConnection() {
     (targetAddress: string) => {
       if (!isValidStellarAddress(targetAddress)) return false
 
+      let remainingList: string[] = []
       setStoredAddresses((prev) => {
         const next = prev.filter((item) => item !== targetAddress)
-        localStorage.setItem(STORAGE_WALLET_LIST, JSON.stringify(next))
+        walletSession.setAddressList(next)
+        remainingList = next
         return next
       })
 
       const activeAddress = publicKey || storedAddress
       if (activeAddress === targetAddress) {
-        const storedList = localStorage.getItem(STORAGE_WALLET_LIST)
-        const parsedList = storedList ? (JSON.parse(storedList) as string[]) : []
-        const nextDefault = parsedList.find(Boolean) || ''
-        localStorage.setItem(STORAGE_ADDRESS, nextDefault)
+        const nextDefault = remainingList.find(Boolean) || ''
+        walletSession.setAddress(nextDefault)
         setStoredAddress(nextDefault)
         setStoredConnected(Boolean(nextDefault))
       }
