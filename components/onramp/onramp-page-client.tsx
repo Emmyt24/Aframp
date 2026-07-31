@@ -137,13 +137,12 @@ export function OnrampPageClient() {
   }
 
   const handleSubmit = async () => {
-    // For demo purposes, auto-connect a mock wallet if none exists
-    let walletAddress = address
     if (!isValidStellarAddress(address)) {
-      const mockAddress = 'GAXYZ123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789ABCDEFG'
-      updateAddress(mockAddress)
-      walletAddress = mockAddress
+      setWalletModalOpen(true)
+      return
     }
+
+    const walletAddress = address
 
     if (!form.isValid || isSubmitting) {
       return

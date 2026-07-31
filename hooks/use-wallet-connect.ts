@@ -48,16 +48,19 @@ export const useWalletConnect = () => {
       // Freighter connection
       if (walletId === 'freighter') {
         if (!window.freighterApi?.getPublicKey) {
-          return { address: generateMockAddress(walletId), walletName }
+          throw new Error('Freighter wallet not detected. Please install the Freighter browser extension.')
         }
         try {
-          const address = await window.freighterApi.getPublicKey()
-          return { address, walletName }
+          const publicKey = await window.freighterApi.getPublicKey()
+          return { address: publicKey, walletName }
         } catch (error) {
-          if (error instanceof Error && error.message.toLowerCase().includes('user rejected')) {
-            throw new Error(`Freighter connection cancelled`)
+          if (error instanceof Error) {
+            if (error.message.toLowerCase().includes('user rejected')) {
+              throw new Error('Freighter connection cancelled')
+            }
+            throw new Error(`Freighter connection failed: ${error.message}`)
           }
-          return { address: generateMockAddress(walletId), walletName }
+          throw new Error('Freighter connection failed: unknown error')
         }
       }
 
