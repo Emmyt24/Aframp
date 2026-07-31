@@ -76,7 +76,7 @@ const nextConfig = {
 
 // next-pwa@2.0.2 doesn't curry — it takes the full Next config (with PWA
 // options nested under `pwa`) and returns the final config directly.
-const configWithPWA = withPWAInit({
+const configWithPWA = withPWA({
   pwa: {
     dest: 'public',
     register: true,
