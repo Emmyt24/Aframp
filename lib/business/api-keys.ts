@@ -1,3 +1,7 @@
+import { desc, eq } from 'drizzle-orm'
+import { db, hasDatabase } from '@/db/client'
+import { apiKeys as apiKeysTable } from '@/db/schema'
+
 export interface ApiKey {
   id: string
   name: string
@@ -28,7 +32,9 @@ function generateKey(): { rawSecret: string; prefix: string; masked: string } {
   return { rawSecret: raw, prefix, masked }
 }
 
-let keys: ApiKey[] = [
+// In-memory fallback used only when DATABASE_URL is not configured
+// (local development). Production must set DATABASE_URL.
+let memoryKeys: ApiKey[] = [
   {
     id: 'key-1',
     name: 'Production',
@@ -57,17 +63,42 @@ let keys: ApiKey[] = [
     status: 'revoked',
   },
 ]
-
 let nextId = 4
 
+function toApiKey(row: typeof apiKeysTable.$inferSelect): ApiKey {
+  return {
+    id: row.id,
+    name: row.name,
+    keyPrefix: row.keyPrefix,
+    maskedKey: row.maskedKey,
+    createdAt: row.createdAt.toISOString(),
+    lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
+    status: row.status as ApiKey['status'],
+  }
+}
+
 export async function fetchApiKeys(): Promise<ApiKey[]> {
+  if (hasDatabase && db) {
+    const rows = await db.select().from(apiKeysTable).orderBy(desc(apiKeysTable.createdAt))
+    return rows.map(toApiKey)
+  }
   await new Promise((r) => setTimeout(r, 200))
-  return [...keys]
+  return [...memoryKeys]
 }
 
 export async function createApiKey(input: CreateApiKeyInput): Promise<CreateApiKeyResult> {
-  await new Promise((r) => setTimeout(r, 300))
   const { rawSecret, prefix, masked } = generateKey()
+
+  if (hasDatabase && db) {
+    const id = crypto.randomUUID()
+    const [row] = await db
+      .insert(apiKeysTable)
+      .values({ id, name: input.name, keyPrefix: prefix, maskedKey: masked, status: 'active' })
+      .returning()
+    return { key: toApiKey(row), rawSecret }
+  }
+
+  await new Promise((r) => setTimeout(r, 300))
   const newKey: ApiKey = {
     id: `key-${nextId++}`,
     name: input.name,
@@ -77,11 +108,15 @@ export async function createApiKey(input: CreateApiKeyInput): Promise<CreateApiK
     lastUsedAt: null,
     status: 'active',
   }
-  keys = [newKey, ...keys]
+  memoryKeys = [newKey, ...memoryKeys]
   return { key: newKey, rawSecret }
 }
 
 export async function revokeApiKey(id: string): Promise<void> {
+  if (hasDatabase && db) {
+    await db.update(apiKeysTable).set({ status: 'revoked' }).where(eq(apiKeysTable.id, id))
+    return
+  }
   await new Promise((r) => setTimeout(r, 200))
-  keys = keys.map((k) => (k.id === id ? { ...k, status: 'revoked' as const } : k))
+  memoryKeys = memoryKeys.map((k) => (k.id === id ? { ...k, status: 'revoked' as const } : k))
 }

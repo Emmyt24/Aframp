@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/calculations'
 import { formatUsd, formatRateCountdown } from '@/lib/offramp/formatters'
 import type { OfframpOrder } from '@/types/offramp'
+import { csrfHeaders } from '@/lib/security/csrf-client'
 import {
   Dialog,
   DialogContent,
@@ -121,6 +122,7 @@ export function OfframpPageClient() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...csrfHeaders(),
         },
         body: JSON.stringify(orderData),
       })

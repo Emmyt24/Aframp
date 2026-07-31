@@ -23,10 +23,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { KycSubmission } from '@/types/kyc'
-import { kycStore } from '@/lib/kyc/store'
-import { captureError, log } from '@/lib/observability'
-
-// ── Validation ────────────────────────────────────────────────────────────────
+import { getKycSubmission, setKycSubmission } from '@/lib/kyc/store'
 
 const bodySchema = z.object({
   idFront: z.string().min(100, 'ID front image is required'),
@@ -311,7 +308,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     expiresAt,
   }
 
-  kycStore.set(submissionId, submission)
+  await setKycSubmission(submissionId, submission)
 
   log.info('kyc.submission.created', {
     submissionId,
@@ -332,8 +329,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         if (result.notes) stored.verificationNotes = result.notes
       }
 
-      // Store Smile job ID for status polling / webhook reconciliation
-      ;(stored as KycSubmission & { smileJobId?: string }).smileJobId = result.smileJobId
+  setTimeout(async () => {
+    const submission = await getKycSubmission(submissionId)
+    if (!submission) return
 
       kycStore.set(submissionId, stored)
     } catch (err) {
@@ -349,8 +347,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     simulateVerification(submissionId)
   }
 
-  return NextResponse.json(
-    { submissionId, status: 'pending', expiresAt },
-    { status: 202 }
-  )
+    await setKycSubmission(submissionId, submission)
+  }, delay)
 }

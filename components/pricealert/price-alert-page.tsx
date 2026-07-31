@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
-import type { PriceAlertDirection, PriceAlertEvent, PriceAlertRule } from '@/lib/price-alerts'
+import type { PriceAlertEvent, PriceAlertRule } from '@/lib/price-alerts'
+import { csrfHeaders } from '@/lib/security/csrf-client'
 
 interface PriceAlertStore {
   rules: PriceAlertRule[]
@@ -63,7 +64,7 @@ export default function PriceAlertPage() {
     try {
       const response = await fetch('/api/pricealerts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...csrfHeaders() },
         body: JSON.stringify(rule),
       })
 
@@ -89,6 +90,7 @@ export default function PriceAlertPage() {
     try {
       const response = await fetch('/api/pricealerts/check', {
         method: 'POST',
+        headers: csrfHeaders(),
       })
       const data = await response.json()
       if (response.ok) {

@@ -1,7 +1,7 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import { NextRequest, NextResponse } from 'next/server'
-import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth/session'
+import { CSRF_COOKIE_NAME, generateCsrfToken, verifyCsrfToken } from '@/lib/security/csrf'
 
 const ratelimit = new Ratelimit({
   redis: new Redis({
@@ -12,12 +12,16 @@ const ratelimit = new Ratelimit({
   analytics: false,
 })
 
-// Routes that don't require an authenticated session — public data reads and
-// the login endpoint itself. Everything else under /api is protected.
-const PUBLIC_API_PREFIXES = ['/api/auth', '/api/exchange-rate', '/api/rates']
-
-function isPublicApiRoute(pathname: string): boolean {
-  return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+function withCsrfCookie(request: NextRequest, response: NextResponse) {
+  if (!request.cookies.get(CSRF_COOKIE_NAME)) {
+    response.cookies.set(CSRF_COOKIE_NAME, generateCsrfToken(), {
+      httpOnly: false,
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    })
+  }
+  return response
 }
 
 export async function middleware(request: NextRequest) {
@@ -26,9 +30,20 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/admin')) {
     const role = request.cookies.get('aframp_role')?.value
     if (role !== 'admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+      return withCsrfCookie(request, NextResponse.redirect(new URL('/dashboard', request.url)))
     }
-    return NextResponse.next()
+    return withCsrfCookie(request, NextResponse.next())
+  }
+
+  if (!pathname.startsWith('/api/')) {
+    return withCsrfCookie(request, NextResponse.next())
+  }
+
+  if (!verifyCsrfToken(request)) {
+    return withCsrfCookie(
+      request,
+      NextResponse.json({ error: 'Invalid or missing CSRF token' }, { status: 403 })
+    )
   }
 
   let requestHeaders = request.headers
@@ -48,17 +63,20 @@ export async function middleware(request: NextRequest) {
   const { success, limit, remaining, reset } = await ratelimit.limit(ip)
 
   if (!success) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again later.' },
-      {
-        status: 429,
-        headers: {
-          'X-RateLimit-Limit': String(limit),
-          'X-RateLimit-Remaining': String(remaining),
-          'X-RateLimit-Reset': String(reset),
-          'Retry-After': String(Math.ceil((reset - Date.now()) / 1000)),
-        },
-      }
+    return withCsrfCookie(
+      request,
+      NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': String(limit),
+            'X-RateLimit-Remaining': String(remaining),
+            'X-RateLimit-Reset': String(reset),
+            'Retry-After': String(Math.ceil((reset - Date.now()) / 1000)),
+          },
+        }
+      )
     )
   }
 
@@ -66,13 +84,9 @@ export async function middleware(request: NextRequest) {
   response.headers.set('X-RateLimit-Limit', String(limit))
   response.headers.set('X-RateLimit-Remaining', String(remaining))
   response.headers.set('X-RateLimit-Reset', String(reset))
-  return response
+  return withCsrfCookie(request, response)
 }
 
 export const config = {
-  // Webhook endpoints (Paystack/Flutterwave callbacks) are excluded — bursts
-  // during batch settlement must not be rate-limited or blocked pending a
-  // session cookie the payment provider will never send. Those endpoints
-  // must independently verify the provider's HMAC signature instead.
-  matcher: ['/api/((?!bills/verify|payments/webhook).*)', '/admin/:path*'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
