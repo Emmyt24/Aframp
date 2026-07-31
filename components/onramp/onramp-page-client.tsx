@@ -33,6 +33,7 @@ import {
   markReferralDiscountConsumed,
   setAppliedReferralCode,
 } from '@/lib/referral'
+import { analytics } from '@/lib/analytics'
 
 export function OnrampPageClient() {
   const router = useRouter()
@@ -121,28 +122,27 @@ export function OnrampPageClient() {
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   // Show the confirmation summary first; the order is only created after
   // the user explicitly confirms in the dialog.
   const handleInitialSubmit = () => {
     if (!form.isValid || isSubmitting) return
-    setShowConfirmDialog(true)
-  }
-
-  const handleInitialSubmit = () => {
-    if (!form.isValid || isSubmitting) return
+    analytics.track('onramp_initiated', {
+      amount: form.amountValue,
+      fiatCurrency: form.state.fiatCurrency,
+      cryptoAsset: form.state.cryptoAsset,
+      paymentMethod: form.state.paymentMethod,
+    })
     setShowConfirmDialog(true)
   }
 
   const handleSubmit = async () => {
-    // For demo purposes, auto-connect a mock wallet if none exists
-    let walletAddress = address
     if (!isValidStellarAddress(address)) {
-      const mockAddress = 'GAXYZ123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789ABCDEFG'
-      updateAddress(mockAddress)
-      walletAddress = mockAddress
+      setWalletModalOpen(true)
+      return
     }
+
+    const walletAddress = address
 
     if (!form.isValid || isSubmitting) {
       return
@@ -205,6 +205,16 @@ export function OnrampPageClient() {
 
       localStorage.setItem(ORDER_KEY, JSON.stringify(order))
       localStorage.setItem(`onramp:order:${order.id}`, JSON.stringify(order))
+
+      analytics.track('onramp_order_created', {
+        orderId: order.id,
+        amount: order.amount,
+        fiatCurrency: order.fiatCurrency,
+        cryptoAsset: order.cryptoAsset,
+        cryptoAmount: order.cryptoAmount,
+        paymentMethod: order.paymentMethod,
+        hasReferralDiscount: hasDiscount,
+      })
 
       setShowConfirmDialog(false)
 
@@ -378,8 +388,7 @@ export function OnrampPageClient() {
             </Button>
           </div>
 
-          {/* Test Utils - Remove in production */}
-          <OnrampTestUtils />
+          {process.env.NODE_ENV === 'development' && <OnrampTestUtils />}
         </DialogContent>
       </Dialog>
 

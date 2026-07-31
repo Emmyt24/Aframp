@@ -1,8 +1,13 @@
 import { Suspense } from 'react'
 import { OnrampSuccessClient } from '@/components/onramp/onramp-success-client'
+import { FlowErrorBoundary } from '@/components/error/FlowErrorBoundary'
 
 function OnrampSuccessPageContent() {
-  return <OnrampSuccessClient />
+  return (
+    <FlowErrorBoundary step="onramp-success" restartHref="/onramp">
+      <OnrampSuccessClient />
+    </FlowErrorBoundary>
+  )
 }
 
 export default function OnrampSuccessPage() {

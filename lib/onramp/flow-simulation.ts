@@ -1,5 +1,6 @@
 import { OnrampOrder } from '@/types/onramp'
 import { notifyOrderUpdate } from './notifications'
+import { analytics } from '@/lib/analytics'
 
 /**
  * Simulates the complete onramp flow with notifications
@@ -60,10 +61,16 @@ export function logSuccessfulConversion(order: OnrampOrder) {
     referrer: typeof window !== 'undefined' ? window.document.referrer : null,
   }
 
-  console.warn('📊 Analytics: Successful conversion logged', analyticsData)
-
-  // In production, this would send to your analytics service
-  // Examples: Google Analytics, Mixpanel, Amplitude, etc.
+  analytics.track('onramp_conversion_completed', {
+    orderId: analyticsData.orderId,
+    amount: analyticsData.amount,
+    fiatCurrency: analyticsData.fiatCurrency,
+    cryptoAmount: analyticsData.cryptoAmount,
+    cryptoAsset: analyticsData.cryptoAsset,
+    paymentMethod: analyticsData.paymentMethod,
+    exchangeRate: analyticsData.exchangeRate,
+    processingTimeMs: analyticsData.processingTime,
+  })
 
   return analyticsData
 }

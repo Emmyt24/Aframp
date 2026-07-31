@@ -4,6 +4,17 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // PWA configuration (next-pwa v2 reads options from the `pwa` key)
+  pwa: {
+    dest: 'public',
+    register: true,
+    // skipWaiting: false — do NOT force immediate service worker updates.
+    // A waiting SW activates only after the user dismisses the update banner
+    // (see components/pwa-update-banner.tsx), preventing in-flight payment
+    // flows from being interrupted.
+    skipWaiting: false,
+    disable: process.env.NODE_ENV === 'development',
+  },
   experimental: {
     // Limit concurrency only in resource-constrained CI environments.
     // Set CI_LOW_RESOURCES=1 in your CI pipeline to enable these caps;
@@ -16,9 +27,6 @@ const nextConfig = {
           staticGenerationMinPagesPerWorker: 1,
         }
       : {}),
-  },
-  typescript: {
-    ignoreBuildErrors: true,
   },
   images: {
     unoptimized: false,
@@ -39,6 +47,18 @@ const nextConfig = {
     ]
   },
   async headers() {
+    const csp = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://api.coingecko.com https://horizon.stellar.org https://horizon-testnet.stellar.org https://*.sentry.io https://*.ingest.us.sentry.io https://vitals.vercel-insights.com",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; ')
+
     return [
       {
         source: '/(.*)',

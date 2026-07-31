@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Clock, Copy, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Clock, Copy, CheckCircle, AlertCircle, Loader2, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -92,8 +94,10 @@ export function OnrampPaymentClient() {
   const handleCopy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
+      toast.success('Copied to clipboard')
     } catch (err) {
       console.error('Copy failed', err)
+      toast.error('Failed to copy — please copy manually')
     }
   }
 
