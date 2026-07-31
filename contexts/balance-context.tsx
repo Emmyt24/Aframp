@@ -8,6 +8,7 @@ interface BalanceContextType {
   balances: TokenBalance[]
   totalUsdValue: number
   loading: boolean
+  error: string | null
   lastUpdated: Date | null
   refetch: () => Promise<void>
 }
