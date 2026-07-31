@@ -77,7 +77,7 @@ export function OnrampTestUtils() {
     setIsLoading(true)
     try {
       const analyticsData = logSuccessfulConversion(sampleOrder)
-      console.warn('✅ Analytics logged:', analyticsData)
+      console.log('[test] Analytics payload:', analyticsData)
     } catch (error) {
       console.error('❌ Analytics logging failed:', error)
     } finally {
