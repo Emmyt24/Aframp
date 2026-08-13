@@ -10,4 +10,4 @@ requirements.md
 .vercel
 .env*.local
 coverage/
-
+.claude 

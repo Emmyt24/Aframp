@@ -1,6 +1,7 @@
 import type React from 'react'
 import type { Metadata, Viewport } from 'next'
 import { ThemeProvider } from '@/components/theme-provider'
+import { SessionProvider } from '@/components/session-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -29,7 +30,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <SessionProvider>{children}</SessionProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -1,10 +1,23 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useSession } from '@/components/session-provider'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+
 export default function Home() {
+  const { session, ready } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!ready) return
+    router.replace(session ? '/charge' : '/login')
+  }, [ready, session, router])
+
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-3 p-8 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight">Aframp Pay</h1>
-      <p className="text-muted-foreground max-w-sm text-sm">
-        Merchant point-of-sale for Stellar-settled payments.
-      </p>
+    <main className="flex min-h-dvh items-center justify-center">
+      <LoadingSpinner />
+      <span className="sr-only">Loading Aframp Pay</span>
     </main>
   )
 }
