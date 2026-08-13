@@ -1,28 +1,10 @@
-import { Navbar } from '@/components/navbar'
-import { Hero } from '@/components/hero'
-import { LogoMarquee } from '@/components/logo-marquee'
-import { BlockchainNetworks } from '@/components/blockchain-networks'
-import { BentoGrid } from '@/components/bento-grid'
-import { HowItWorks } from '@/components/how-it-works'
-import { FinalCTA } from '@/components/final-cta'
-import { Footer } from '@/components/footer'
-import { SmoothScroll } from '@/components/smooth-scroll'
-
-export default function LandingPage() {
+export default function Home() {
   return (
-    <SmoothScroll>
-      <div className="min-h-screen bg-background text-foreground">
-        <Navbar />
-        <main>
-          <Hero />
-          <LogoMarquee />
-          <BlockchainNetworks />
-          <BentoGrid />
-          <HowItWorks />
-          <FinalCTA />
-        </main>
-        <Footer />
-      </div>
-    </SmoothScroll>
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-3 p-8 text-center">
+      <h1 className="text-2xl font-semibold tracking-tight">Aframp Pay</h1>
+      <p className="text-muted-foreground max-w-sm text-sm">
+        Merchant point-of-sale for Stellar-settled payments.
+      </p>
+    </main>
   )
 }

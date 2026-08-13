@@ -1,50 +1,20 @@
 import type React from 'react'
 import type { Metadata, Viewport } from 'next'
-import { Analytics } from '@vercel/analytics/next'
-import CookieConsentBanner from '@/components/CookieConsentBanner'
 import { ThemeProvider } from '@/components/theme-provider'
-import OfflineBoundary from '@/components/error/OfflineBoundary'
-import { KycProvider } from '@/contexts/kyc-context'
-import { NotificationProvider } from '@/contexts/notification-context'
-import { PwaUpdateBanner } from '@/components/pwa-update-banner'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Aframp - Buy Crypto, Pay Bills & Send Money in Africa',
+  title: 'Aframp Pay — Accept Stellar payments',
   description:
-    "Africa's premier cNGN stablecoin payment platform. Buy crypto from ₦2,000, pay bills instantly, and send money across 12 African countries.",
-  keywords: [
-    'cNGN',
-    'stablecoin',
-    'crypto',
-    'Nigeria',
-    'Africa',
-    'payments',
-    'bills',
-    'fintech',
-    'Aframp',
-  ],
+    'Merchant point-of-sale for Stellar-settled payments. Enter an amount, show the code, get paid.',
+  keywords: ['Aframp', 'merchant', 'POS', 'Stellar', 'cNGN', 'Nigeria', 'payments'],
   generator: 'Next.js',
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true },
-  },
-  openGraph: {
-    title: 'Aframp - Buy Crypto, Pay Bills & Send Money in Africa',
-    description:
-      "Africa's premier cNGN stablecoin payment platform. Buy crypto from ₦2,000, pay bills instantly, and send money across 12 African countries.",
-    type: 'website',
-    locale: 'en_NG',
-    siteName: 'Aframp',
-  },
 }
 
 export const viewport: Viewport = {
   themeColor: '#10b981',
 }
 
-// This is a server component by default
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -59,15 +29,8 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <KycProvider>
-            <NotificationProvider>
-              <OfflineBoundary>{children}</OfflineBoundary>
-            </NotificationProvider>
-          </KycProvider>
+          {children}
         </ThemeProvider>
-        <CookieConsentBanner />
-        <PwaUpdateBanner />
-        <Analytics />
       </body>
     </html>
   )

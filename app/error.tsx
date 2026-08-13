@@ -2,9 +2,9 @@
 
 import * as Sentry from '@sentry/nextjs'
 import { useEffect } from 'react'
-import ErrorLayout from '@/components/error/ErrorLayout'
+import { Button } from '@/components/ui/button'
 
-export default function GlobalError({
+export default function Error({
   error,
   reset,
 }: {
@@ -16,14 +16,12 @@ export default function GlobalError({
   }, [error])
 
   return (
-    <ErrorLayout
-      status={500}
-      title="Something went wrong"
-      message="A server error occurred. Our team has been notified."
-      actions={[
-        { label: 'Retry', onClick: reset },
-        { label: 'Home', href: '/' },
-      ]}
-    />
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8 text-center">
+      <h1 className="text-2xl font-semibold tracking-tight">Something went wrong</h1>
+      <p className="text-muted-foreground max-w-sm text-sm">
+        The page couldn&apos;t load. Try again, and if it keeps happening let us know.
+      </p>
+      <Button onClick={reset}>Try again</Button>
+    </main>
   )
 }
