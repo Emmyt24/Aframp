@@ -14,10 +14,10 @@ const atkinson = Atkinson_Hyperlegible({
 })
 
 export const metadata: Metadata = {
-  title: 'Aframp Pay — Accept Stellar payments',
+  title: 'Aframp — Pay, Send & Buy Crypto in Africa',
   description:
-    'Merchant point-of-sale for Stellar-settled payments. Enter an amount, show the code, get paid.',
-  keywords: ['Aframp', 'merchant', 'POS', 'Stellar', 'cNGN', 'Nigeria', 'payments'],
+    "Buy crypto from as low as 2,000 cNGN. Pay bills, send money, and grow your business with Africa's first stablecoin payment platform.",
+  keywords: ['Aframp', 'cNGN', 'Stellar', 'Nigeria', 'crypto', 'payments', 'stablecoin'],
   generator: 'Next.js',
 }
 

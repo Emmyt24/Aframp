@@ -8,6 +8,7 @@ import {
   Wallet as WalletIcon,
 } from 'lucide-react'
 
+import { AframpMark } from '@/components/brand/aframp-mark'
 import { cn } from '@/lib/utils'
 import { wallet } from '@/lib/wallet-data'
 
@@ -23,29 +24,6 @@ const tools = [
   { label: 'Security', icon: ShieldCheck },
   { label: 'Settings', icon: Settings2 },
 ]
-
-function AframpMark() {
-  return (
-    <span className="bg-brand flex size-8 shrink-0 items-center justify-center rounded-lg">
-      {/* The Aframp mark: an "A" whose crossbar runs on as an arrow — the
-          "flow of value" idea from the brand sheet. */}
-      <svg
-        viewBox="0 0 24 24"
-        className="size-5"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M5.5 20 12 4.5 18.5 20" />
-        <path d="M8.6 14.4h8.2" />
-        <path d="M14.4 11.9l2.6 2.5-2.6 2.5" />
-      </svg>
-    </span>
-  )
-}
 
 function NavGroup({
   title,
@@ -83,7 +61,7 @@ export function WalletSidebar() {
   return (
     <aside className="bg-rail border-hairline sticky top-0 flex h-dvh w-[260px] shrink-0 flex-col border-r p-4 pb-6">
       <div className="flex items-center gap-2.5 px-1 pt-1">
-        <AframpMark />
+        <AframpMark className="size-8" />
         <span className="text-xl font-bold tracking-tight text-white">Aframp</span>
       </div>
       <p className="text-dim mt-1.5 px-1 text-xs">Multi-chain wallet</p>
