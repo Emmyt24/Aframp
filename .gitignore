@@ -11,5 +11,3 @@ requirements.md
 .env*.local
 coverage/
 .claude 
-tsconfig.tsbuildinfo
-

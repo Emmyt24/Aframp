@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ErrorState } from '@/components/ui/error-state'
 import { EmptyStateIllustration } from '@/components/ui/empty-state-illustration'
-import { api, type Payment, type PaymentStatus } from '@/lib/api'
+import { api, type Balance, type Payment, type PaymentStatus } from '@/lib/api'
 import { formatStroops } from '@/lib/money'
 import { useAuthenticatedSession } from '@/components/session-provider'
 
@@ -37,13 +37,19 @@ function formatWhen(iso: string): string {
 export default function TransactionsPage() {
   const { token } = useAuthenticatedSession()
   const [payments, setPayments] = useState<Payment[] | null>(null)
+  const [balances, setBalances] = useState<Balance[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
       setError(null)
       try {
-        setPayments(await api.listTransactions(token, 50, signal))
+        const [nextPayments, nextBalances] = await Promise.all([
+          api.listTransactions(token, 50, signal),
+          api.getBalances(token, signal),
+        ])
+        setPayments(nextPayments)
+        setBalances(nextBalances)
       } catch (cause) {
         if (cause instanceof DOMException && cause.name === 'AbortError') return
         setError(cause instanceof Error ? cause.message : 'Could not load your payments')
@@ -69,7 +75,24 @@ export default function TransactionsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Payments</h1>
+      <section className="space-y-3">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Payments</h1>
+        {balances.length > 0 && (
+          <ul className="grid gap-2">
+            {balances.map((balance) => (
+              <li
+                key={balance.asset}
+                className="bg-muted/50 flex items-baseline justify-between rounded-2xl px-4 py-3"
+              >
+                <span className="text-muted-foreground text-sm">{balance.asset} available</span>
+                <span className="text-lg font-semibold tabular-nums">
+                  {formatStroops(balance.available)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {payments.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
