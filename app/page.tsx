@@ -11,7 +11,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!ready) return
-    router.replace(session ? '/charge' : '/login')
+    router.replace(session ? '/home' : '/login')
   }, [ready, session, router])
 
   return (

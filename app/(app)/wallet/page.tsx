@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { WalletInfo } from '@/components/wallet-info'
 import { api, ApiError, type Me, type Wallet } from '@/lib/api'
 import { useSession, useAuthenticatedSession } from '@/components/session-provider'
 
@@ -19,7 +19,6 @@ export default function WalletPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -57,13 +56,6 @@ export default function WalletPage() {
     }
   }
 
-  async function copyAddress() {
-    if (!wallet) return
-    await navigator.clipboard.writeText(wallet.address)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -92,23 +84,10 @@ export default function WalletPage() {
 
       {wallet ? (
         <section className="space-y-3">
-          <h2 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
-            Your payment address
-          </h2>
-          <p className="bg-muted/50 font-heading rounded-2xl p-4 text-xs break-all">
-            {wallet.address}
-          </p>
-          <Button variant="outline" onClick={copyAddress} className="w-full">
-            {copied ? (
-              <>
-                <Check className="size-4" aria-hidden /> Copied
-              </>
-            ) : (
-              <>
-                <Copy className="size-4" aria-hidden /> Copy address
-              </>
-            )}
-          </Button>
+          <WalletInfo
+            walletName={me?.merchant_name ?? 'Payment address'}
+            walletAddress={wallet.address}
+          />
           <p className="text-muted-foreground text-xs">
             Aframp keeps this address secure for you. Customers pay into it when they scan a
             charge — you never need to share it directly.

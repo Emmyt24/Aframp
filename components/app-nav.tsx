@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ArrowDownToLine, Banknote, Receipt, Wallet } from 'lucide-react'
+import { ArrowDownToLine, Banknote, Home, Receipt, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
+  { href: '/home', label: 'Home', icon: Home },
   { href: '/charge', label: 'Charge', icon: Banknote },
   { href: '/transactions', label: 'Payments', icon: Receipt },
   { href: '/withdraw', label: 'Cash out', icon: ArrowDownToLine },
