@@ -7,7 +7,6 @@ import { Check, Clock, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { CountdownTimer } from '@/components/countdown-timer'
 import { ErrorState } from '@/components/ui/error-state'
 import { api, type PaymentRequest } from '@/lib/api'
 import { formatStroops } from '@/lib/money'
@@ -15,10 +14,20 @@ import { formatStroops } from '@/lib/money'
 /** The backend confirms a deposit within one Horizon poll cycle (60s default). */
 const POLL_INTERVAL_MS = 3000
 
+function secondsUntil(iso: string): number {
+  return Math.max(0, Math.floor((new Date(iso).getTime() - Date.now()) / 1000))
+}
+
+function formatCountdown(seconds: number): string {
+  const minutes = Math.floor(seconds / 60)
+  return `${minutes}:${String(seconds % 60).padStart(2, '0')}`
+}
+
 export default function PaymentRequestPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const [request, setRequest] = useState<PaymentRequest | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [remaining, setRemaining] = useState(0)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -55,6 +64,14 @@ export default function PaymentRequestPage({ params }: { params: Promise<{ id: s
       clearTimeout(timer)
     }
   }, [load])
+
+  // Separate 1s ticker so the countdown moves independently of the poll.
+  useEffect(() => {
+    if (!request || request.status !== 'pending') return
+    setRemaining(secondsUntil(request.expires_at))
+    const timer = setInterval(() => setRemaining(secondsUntil(request.expires_at)), 1000)
+    return () => clearInterval(timer)
+  }, [request])
 
   if (error && !request) {
     return (
@@ -151,7 +168,13 @@ export default function PaymentRequestPage({ params }: { params: Promise<{ id: s
         </div>
       </dl>
 
-      <CountdownTimer expiresAt={new Date(request.expires_at)} />
+      <p
+        className="text-muted-foreground flex items-center justify-center gap-2 text-sm"
+        aria-live="polite"
+      >
+        <Clock className="size-4" aria-hidden />
+        Expires in <span className="tabular-nums">{formatCountdown(remaining)}</span>
+      </p>
 
       <div className="space-y-2">
         <Button asChild variant="outline" size="lg" className="w-full">

@@ -84,7 +84,7 @@ export function Hero() {
 
         <div className="mt-8 flex flex-wrap gap-3">
           <a
-            href="#cta"
+            href="/login"
             className="bg-brand flex items-center gap-2 rounded-full px-6 py-3.5 text-sm font-bold text-black transition-opacity hover:opacity-90"
           >
             <Wallet className="size-4" />
