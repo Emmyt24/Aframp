@@ -11,3 +11,4 @@ requirements.md
 .env*.local
 coverage/
 .claude 
+designs
