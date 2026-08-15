@@ -2,7 +2,7 @@
 
 import * as Sentry from '@sentry/nextjs'
 import { useEffect } from 'react'
-import { Button } from '@/components/ui/button'
+import ErrorLayout from '@/components/error/ErrorLayout'
 
 export default function Error({
   error,
@@ -16,12 +16,13 @@ export default function Error({
   }, [error])
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight">Something went wrong</h1>
-      <p className="text-muted-foreground max-w-sm text-sm">
-        The page couldn&apos;t load. Try again, and if it keeps happening let us know.
-      </p>
-      <Button onClick={reset}>Try again</Button>
-    </main>
+    <ErrorLayout
+      title="Something went wrong"
+      message="The page couldn't load. Try again, and if it keeps happening let us know."
+      actions={[
+        { label: 'Try again', onClick: reset },
+        { label: 'Go home', href: '/' },
+      ]}
+    />
   )
 }
