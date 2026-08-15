@@ -29,9 +29,11 @@ Sentry.init({
   ],
 
   beforeSend(event) {
-    // Strip sensitive wallet data from breadcrumb messages
-    if (event.breadcrumbs?.values) {
-      event.breadcrumbs.values = event.breadcrumbs.values.map((b) => ({
+    // Strip sensitive wallet data from breadcrumb messages.
+    // Event.breadcrumbs is a Breadcrumb[] — the { values: [...] } shape is
+    // the envelope wire format, which never reaches beforeSend.
+    if (event.breadcrumbs) {
+      event.breadcrumbs = event.breadcrumbs.map((b) => ({
         ...b,
         message: b.message?.replace(/G[A-Z2-7]{55}/g, '[STELLAR_ADDR]'),
       }))
