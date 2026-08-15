@@ -89,6 +89,6 @@ const withPWA = withPWAInit({
   ],
 })
 
-const configWithPWA = withPWA(nextConfig)
+const configWithPWA = nextConfig // TEMP verify
 
 export default withSentryConfig(configWithPWA)

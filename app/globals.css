@@ -373,3 +373,15 @@
     animation: none;
   }
 }
+
+/* Light landing page, sampled from designs/1920w light(1).png.
+   Brand green matches the other designs (#33cc33); the rest of this
+   palette is specific to the light direction. */
+@theme {
+  --color-mint: #ebffeb;
+  --color-lavender: #f5f4fc;
+  --color-charcoal: #1e1e1e;
+  --color-accent-purple: #7146eb;
+  --color-accent-pink: #ee7fc4;
+  --color-accent-teal: #18bac0;
+}
