@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
@@ -8,8 +9,13 @@ import { cn } from '@/lib/utils'
 const tabs = ['Spend', 'Buy'] as const
 
 export function AmountWidget() {
+  const router = useRouter()
   const [tab, setTab] = useState<(typeof tabs)[number]>('Spend')
   const [amount, setAmount] = useState('')
+
+  // Nothing to act on yet without an amount — signing in happens once
+  // there's a real payment to continue with.
+  const canContinue = Number(amount) > 0
 
   return (
     <div className="w-full max-w-[420px] overflow-hidden rounded-xl bg-white shadow-lg">
@@ -53,7 +59,9 @@ export function AmountWidget() {
         <button
           type="button"
           aria-label={`Continue to ${tab.toLowerCase()}`}
-          className="bg-brand-deep flex size-9 shrink-0 items-center justify-center rounded-full text-white transition-opacity hover:opacity-90"
+          disabled={!canContinue}
+          onClick={() => router.push('/login')}
+          className="bg-brand-deep flex size-9 shrink-0 items-center justify-center rounded-full text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:opacity-40"
         >
           <ChevronRight className="size-4" />
         </button>

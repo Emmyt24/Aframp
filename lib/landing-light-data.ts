@@ -35,13 +35,13 @@ export const useCases: UseCase[] = [
   {
     icon: '💎',
     title: 'Spend Without Selling',
-    blurb: 'Use your Bitcoin when you need cash without liquidating your stack',
+    blurb: 'Use your Stellar USDC when you need cash without touching your savings',
     tint: 'text-accent-purple',
   },
   {
     icon: '⚡',
     title: 'Instant Bank Transfers',
-    blurb: "Confirm the Bitcoin send; recipient's bank is notified in seconds.",
+    blurb: "Confirm the USDC send; recipient's bank is notified in seconds.",
     tint: 'text-brand',
   },
   {
@@ -62,28 +62,28 @@ export const steps = [
   {
     title: 'Enter Amount & Recipient/Your Wallet',
     blurb:
-      "Select payout currency and enter recipient bank/mobile money details or your Bitcoin wallet—depending on if you're buying or sending.",
+      "Select payout currency and enter recipient bank/mobile money details or your Stellar wallet—depending on if you're buying or sending.",
   },
   {
     title: 'Review Live Rate & Details',
     blurb: "We show the exact rate and calculate what you'll send.",
   },
   {
-    title: 'Send or Receive Bitcoin',
+    title: 'Send or Receive USDC',
     blurb:
-      'Buying? Paste or generate a Lightning invoice. Spending? Send Bitcoin to Aframp. All flows supported.',
+      'Buying? Share your Stellar wallet address. Spending? Send USDC (or another supported stablecoin) to Aframp. All flows supported.',
   },
   {
     title: 'Instant Payout or Delivery',
     blurb:
-      "Get instant payout to a recipient's bank/mobile money or have Bitcoin land in your wallet. Most settle in seconds!",
+      "Get instant payout to a recipient's bank/mobile money or have USDC land in your wallet. Most settle in seconds!",
   },
 ]
 
 export const faqs = [
   {
-    q: 'How do I buy and save in Bitcoin, or send money to someone in Africa with Aframp?',
-    a: 'Just choose how much you want, follow a few prompts, and your Bitcoin or payout is delivered instantly. Aframp lets you buy and save in Bitcoin—and send money across Africa (currently Nigeria; Ghana, Kenya, & Benin coming soon) without hassle.',
+    q: 'How do I buy and save in USDC, or send money to someone in Africa with Aframp?',
+    a: 'Just choose how much you want, follow a few prompts, and your USDC or payout is delivered instantly. Aframp lets you buy and save in USDC and other Stellar stablecoins—and send money across Africa (currently Nigeria; Ghana, Kenya, & Benin coming soon) without hassle.',
   },
   {
     q: 'What are the requirements? Is an account or identity verification needed?',
@@ -95,11 +95,11 @@ export const faqs = [
   },
   {
     q: 'How fast are transactions processed?',
-    a: 'Most settle in seconds. Bank and mobile money payouts depend on the receiving institution, but are typically near-instant.',
+    a: 'Most settle in seconds thanks to the Stellar network. Bank and mobile money payouts depend on the receiving institution, but are typically near-instant.',
   },
   {
     q: 'What wallets can I use with Aframp?',
-    a: 'Any Bitcoin wallet that supports Lightning invoices or on-chain sends. You keep custody of your own funds.',
+    a: 'Any Stellar wallet that holds USDC or another supported stablecoin. You keep custody of your own funds.',
   },
   {
     q: 'Are there any hidden fees?',
@@ -110,12 +110,12 @@ export const faqs = [
     a: 'Nigeria today, with Ghana, Kenya and Benin coming soon.',
   },
   {
-    q: 'Can I really spend without selling all my Bitcoin?',
-    a: 'Yes. Spend only what you need for a given payment and keep the rest of your stack intact.',
+    q: 'Can I really spend without selling all my crypto?',
+    a: 'Yes. Spend only what you need for a given payment and keep the rest of your USDC and other stablecoin holdings intact.',
   },
   {
     q: 'Is Aframp custodial?',
-    a: 'No. Aframp is non-custodial — your Bitcoin stays in your wallet until you send it.',
+    a: 'No. Aframp is non-custodial — your USDC stays in your wallet until you send it.',
   },
   {
     q: 'What happens if a payout fails? What support is available?',
@@ -127,27 +127,27 @@ export const whyUs = [
   {
     title: 'High remittance fees that drain income.',
     blurb:
-      'Traditional money transfers often come with high fees that reduce the amount families receive. Aframp provides a low-cost alternative using Bitcoin, keeping more money in the hands of your loved ones.',
+      'Traditional money transfers often come with high fees that reduce the amount families receive. Aframp provides a low-cost alternative using Stellar USDC, keeping more money in the hands of your loved ones.',
   },
   {
     title: 'Unstable exchange rates and fast devaluation',
     blurb:
-      'In many regions, local currencies lose value quickly. Aframp helps users hold and convert Bitcoin into spendable value, providing protection from currency devaluation.',
+      'In many regions, local currencies lose value quickly. Aframp helps users hold and convert into USDC and other stablecoins, providing protection from currency devaluation.',
   },
   {
     title: 'Limited access to reliable cross-border payments',
     blurb:
-      "Banking systems aren't always accessible or efficient for international transactions. Aframp bridges the gap with seamless cross-border Bitcoin transfers that are reliable and secure.",
+      "Banking systems aren't always accessible or efficient for international transactions. Aframp bridges the gap with seamless cross-border stablecoin transfers that are reliable and secure.",
   },
   {
     title: 'Delays or friction when receiving funds from abroad',
     blurb:
-      'Waiting days to receive money can disrupt everyday life. Aframp enables near-instant Bitcoin-based payments, giving recipients faster access to their funds.',
+      'Waiting days to receive money can disrupt everyday life. Aframp enables near-instant USDC-based payments on Stellar, giving recipients faster access to their funds.',
   },
 ]
 
 export const footer = {
-  tagline: 'Spend Bitcoin. Keep Your Bitcoin.',
+  tagline: 'Spend USDC. Keep Your Savings.',
   links: ['Blog', 'Terms', 'Privacy'],
   support: 'getAframp@gmail.com',
   business: 'partners@Aframp.com',
