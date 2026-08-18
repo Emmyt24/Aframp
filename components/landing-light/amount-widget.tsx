@@ -60,7 +60,7 @@ export function AmountWidget() {
           type="button"
           aria-label={`Continue to ${tab.toLowerCase()}`}
           disabled={!canContinue}
-          onClick={() => router.push('/login')}
+          onClick={() => router.replace('/login')}
           className="bg-brand-deep flex size-9 shrink-0 items-center justify-center rounded-full text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:opacity-40"
         >
           <ChevronRight className="size-4" />
