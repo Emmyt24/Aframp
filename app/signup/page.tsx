@@ -37,7 +37,7 @@ export default function SignupPage() {
     setSubmitting(true)
     try {
       await signUp(email, password, name)
-      router.replace('/wallet')
+      router.replace('/charge')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not create your account')
       setSubmitting(false)

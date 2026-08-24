@@ -16,9 +16,9 @@ export function WhyUs() {
         />
       </div>
 
-      <div className="bg-white px-6 py-20">
+      <div className="bg-white dark:bg-surface px-6 py-20">
         <div className="mx-auto max-w-2xl">
-          <h2 className="text-brand-deep text-center text-3xl font-bold tracking-tight sm:text-4xl">
+          <h2 className="text-brand-deep dark:text-brand text-center text-3xl font-bold tracking-tight sm:text-4xl">
             Why Us?
           </h2>
 
@@ -29,8 +29,10 @@ export function WhyUs() {
                   🔻
                 </span>
                 <div>
-                  <h3 className="text-charcoal font-bold">{title}</h3>
-                  <p className="text-charcoal/70 mt-1.5 text-xs leading-relaxed">{blurb}</p>
+                  <h3 className="text-charcoal dark:text-white font-bold">{title}</h3>
+                  <p className="text-charcoal/70 dark:text-white/70 mt-1.5 text-xs leading-relaxed">
+                    {blurb}
+                  </p>
                 </div>
               </li>
             ))}

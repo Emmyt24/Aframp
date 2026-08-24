@@ -5,7 +5,6 @@ import { HowItWorks } from '@/components/landing-light/how-it-works'
 import { SiteFooter } from '@/components/landing-light/site-footer'
 import { UseCases } from '@/components/landing-light/use-cases'
 import { WhyUs } from '@/components/landing-light/why-us'
-import { RedirectSignedIn } from '@/components/redirect-signed-in'
 
 export const metadata = {
   title: "Aframp — Africa's gateway to global decentralized finance",
@@ -14,11 +13,8 @@ export const metadata = {
 }
 
 export default function Home() {
-  // The design is light-only, so this tree opts out of the app's dark
-  // theme rather than inheriting it.
   return (
-    <div className="font-brand bg-white">
-      <RedirectSignedIn />
+    <div className="font-brand bg-white dark:bg-surface">
       <Hero />
       <main>
         <UseCases />

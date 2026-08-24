@@ -24,37 +24,51 @@ export const hero = {
   amountLabel: 'Enter Payment Amount',
 }
 
-export type UseCase = {
-  icon: string
-  title: string
-  blurb: string
-  tint: string
+// The lead tile in the "Everything You Need to Transact" grid — a wider
+// card with a live-rate strip and a sample recent-activity feed.
+export const useCasesLead = {
+  title: 'Buy USDC from ₦2,000',
+  blurb:
+    'Start your stablecoin journey with as little as 2,000 naira — buy USDC with instant settlement.',
+  rate: { left: '1 USDC', right: '$1.00' },
+  ticker: [
+    { label: 'USDC Buy', amount: '₦50,000' },
+    { label: 'Bank Payout', amount: '₦15,000' },
+    { label: 'USDC Sell', amount: '₦120,000' },
+  ],
 }
 
-export const useCases: UseCase[] = [
+export type UseCaseTile = {
+  title: string
+  blurb: string
+  chips?: string[]
+  metric?: { value: string; label: string }
+}
+
+export const useCaseTiles: UseCaseTile[] = [
   {
-    icon: '💎',
-    title: 'Spend Without Selling',
-    blurb: 'Use your Stellar USDC when you need cash without touching your savings',
-    tint: 'text-accent-purple',
-  },
-  {
-    icon: '⚡',
-    title: 'Instant Bank Transfers',
-    blurb: "Confirm the USDC send; recipient's bank is notified in seconds.",
-    tint: 'text-brand',
-  },
-  {
-    icon: '🎯',
     title: 'No Hidden Fees',
     blurb: 'What you send is what they receive. We show the exact rate up front.',
-    tint: 'text-accent-pink',
   },
   {
-    icon: '🌍',
-    title: 'Borderless & Simple',
-    blurb: 'Pay anyone across supported African countries — no accounts, no friction.',
-    tint: 'text-accent-teal',
+    title: 'Business Payments',
+    blurb:
+      'Accept USDC payments through Aframp — built for merchants and SMEs expanding across Africa.',
+  },
+  {
+    title: 'Instant Settlement',
+    blurb: "Confirm the send; recipient's bank is notified in seconds.",
+    metric: { value: '~5s', label: 'Stellar ledger close time' },
+  },
+  {
+    title: 'Bank-Grade Security',
+    blurb: 'Aframp is non-custodial — your USDC stays in your wallet until the moment you send it.',
+    chips: ['Non-Custodial', 'Encrypted'],
+  },
+  {
+    title: 'Pan-African Reach',
+    blurb: 'Send money across supported African countries with zero forex headaches.',
+    chips: ['NG', 'GH', 'KE', 'BN'],
   },
 ]
 

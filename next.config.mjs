@@ -62,12 +62,15 @@ const nextConfig = {
   },
 }
 
+// next-pwa@5.6.0 is incompatible with Next.js 15's webpack runtime and causes
+// "a[d] is not a function" errors during SSR prerendering in production builds.
+// Disable it until the project upgrades to @ducanh2912/next-pwa or similar.
 const withPWA = withPWAInit({
   dest: 'public',
   register: true,
   skipWaiting: true,
   reloadOnOnline: false,
-  disable: process.env.NODE_ENV === 'development',
+  disable: true, // was: process.env.NODE_ENV === 'development'
   runtimeCaching: [
     {
       urlPattern: /\/api\/(?:exchange-rate|rates)(?:\/)?(?:\?.*)?$/,
