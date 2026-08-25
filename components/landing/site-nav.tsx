@@ -39,9 +39,11 @@ export function SiteNav() {
           >
             <Sun className="size-[18px]" />
           </button>
-          <Link href="/home" className="text-dim hidden text-sm hover:text-white sm:block">
-            Explore
-          </Link>
+          {signedIn && (
+            <Link href="/home" className="text-dim hidden text-sm hover:text-white sm:block">
+              Explore
+            </Link>
+          )}
           <Link
             href={signedIn ? '/charge' : '/login'}
             className="bg-brand flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-black transition-opacity hover:opacity-90"

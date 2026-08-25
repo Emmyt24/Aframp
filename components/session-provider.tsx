@@ -45,7 +45,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const persist = useCallback((next: Session) => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      // Storage may be unavailable (private mode, quota, blocked) — the
+      // session still works for this tab, it just won't survive a reload.
+    }
     setSession(next)
   }, [])
 

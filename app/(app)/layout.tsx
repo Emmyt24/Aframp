@@ -1,14 +1,16 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { WalletSidebar } from '@/components/wallet/wallet-sidebar'
 import { useSession } from '@/components/session-provider'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { DarkScopeContext } from '@/components/dark-scope'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { session, ready } = useSession()
   const router = useRouter()
+  const [scopeNode, setScopeNode] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (ready && !session) router.replace('/login')
@@ -24,9 +26,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="dark bg-ink font-brand flex min-h-dvh text-white">
+    <div ref={setScopeNode} className="dark bg-ink font-brand flex min-h-dvh text-white">
       <WalletSidebar />
-      <main className="min-w-0 flex-1 p-6 lg:p-8">{children}</main>
+      <main className="min-w-0 flex-1 p-6 lg:p-8">
+        <DarkScopeContext.Provider value={scopeNode}>{children}</DarkScopeContext.Provider>
+      </main>
     </div>
   )
 }

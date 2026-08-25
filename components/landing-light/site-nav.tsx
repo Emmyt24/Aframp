@@ -29,14 +29,13 @@ export function SiteNav() {
               </a>
             </li>
           ))}
-          <li>
-            <Link
-              href="/home"
-              className="hover:text-brand dark:hover:text-brand"
-            >
-              Dashboard
-            </Link>
-          </li>
+          {signedIn && (
+            <li>
+              <Link href="/home" className="hover:text-brand dark:hover:text-brand">
+                Dashboard
+              </Link>
+            </li>
+          )}
         </ul>
 
         <div className="ml-auto flex shrink-0 items-center gap-2.5 md:ml-0">
