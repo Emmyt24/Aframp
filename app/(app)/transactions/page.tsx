@@ -75,48 +75,46 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="space-y-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Payments</h1>
+    <div>
+      <header className="space-y-3">
+        <h1 className="text-2xl font-bold tracking-tight">Payments</h1>
         {balances.length > 0 && (
-          <ul className="grid gap-2">
+          <ul className="grid gap-2 sm:grid-cols-2">
             {balances.map((balance) => (
               <li
                 key={balance.asset}
-                className="bg-muted/50 flex items-baseline justify-between rounded-2xl px-4 py-3"
+                className="bg-panel border-hairline flex items-baseline justify-between rounded-2xl border px-4 py-3"
               >
-                <span className="text-muted-foreground text-sm">{balance.asset} available</span>
-                <span className="text-lg font-semibold tabular-nums">
+                <span className="text-dim text-sm">{balance.asset} available</span>
+                <span className="text-lg font-bold tabular-nums">
                   {formatStroops(balance.available)}
                 </span>
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </header>
 
       {payments.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-12 text-center">
+        <div className="mt-6 flex flex-col items-center gap-3 py-12 text-center">
           <EmptyStateIllustration variant="empty" className="size-20" />
-          <p className="text-muted-foreground text-sm">
-            No payments yet. Charge a customer and they&apos;ll show up here.
-          </p>
+          <p className="text-dim text-sm">No payments yet. Charge a customer and they&apos;ll show up here.</p>
         </div>
       ) : (
-        <ul className="divide-border divide-y">
+        <ul className="border-hairline mt-6 divide-y">
           {payments.map((payment) => (
             <li key={payment.id} className="flex items-center justify-between gap-3 py-3">
               <div className="min-w-0 space-y-1">
-                <p className="text-base font-medium tabular-nums">
+                <p className="text-base font-bold tabular-nums text-white">
                   {formatStroops(payment.amount_stroops)} {payment.asset}
                 </p>
-                <p className="text-muted-foreground text-xs">
+                <p className="text-dim text-xs">
                   {formatWhen(payment.created_at)} ·{' '}
                   <a
                     href={`${EXPLORER_BASE}/${payment.tx_hash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hover:text-foreground underline underline-offset-2"
+                    className="hover:text-bright underline underline-offset-2"
                   >
                     Receipt
                   </a>

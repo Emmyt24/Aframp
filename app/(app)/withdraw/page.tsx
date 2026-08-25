@@ -113,110 +113,115 @@ export default function WithdrawPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <header className="space-y-1">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Cash out</h1>
-        <p className="text-muted-foreground text-sm">
+    <div>
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight">Cash out</h1>
+        <p className="text-dim mt-1 text-sm">
           {formatStroops(available)} {ASSET} available
         </p>
       </header>
 
-      {available === 0n && (
-        <Alert>
-          <AlertDescription>
-            You have no {ASSET} to cash out yet. Payments currently arrive as XLM, which
-            doesn&apos;t have a cash-out route — that opens up once {ASSET} payments go live.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+      <div className="mt-6 max-w-xl space-y-5">
+        {available === 0n && (
+          <Alert>
+            <AlertDescription>
+              You have no {ASSET} to cash out yet. Payments currently arrive as XLM, which
+              doesn&apos;t have a cash-out route — that opens up once {ASSET} payments go live.
+            </AlertDescription>
           </Alert>
         )}
 
-        <div className="space-y-2">
-          <Label htmlFor="amount">Amount ({ASSET})</Label>
-          <Input
-            id="amount"
-            inputMode="decimal"
-            placeholder="0.00"
-            value={amount}
-            disabled={available === 0n}
-            onChange={(event) => setAmount(event.target.value)}
-          />
-        </div>
+        <form
+          onSubmit={submit}
+          className="bg-panel border-hairline flex flex-col gap-4 rounded-2xl border p-5"
+        >
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-        <div className="space-y-2">
-          <Label htmlFor="bank">Bank</Label>
-          <Select value={bankCode} onValueChange={setBankCode} disabled={available === 0n}>
-            <SelectTrigger id="bank">
-              <SelectValue placeholder="Choose your bank" />
-            </SelectTrigger>
-            <SelectContent>
-              {BANKS.map((bank) => (
-                <SelectItem key={bank.code} value={bank.code}>
-                  {bank.name}
-                </SelectItem>
+          <div className="space-y-2">
+            <Label htmlFor="amount">Amount ({ASSET})</Label>
+            <Input
+              id="amount"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={amount}
+              disabled={available === 0n}
+              onChange={(event) => setAmount(event.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="bank">Bank</Label>
+            <Select value={bankCode} onValueChange={setBankCode} disabled={available === 0n}>
+              <SelectTrigger id="bank">
+                <SelectValue placeholder="Choose your bank" />
+              </SelectTrigger>
+              <SelectContent>
+                {BANKS.map((bank) => (
+                  <SelectItem key={bank.code} value={bank.code}>
+                    {bank.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="account">Account number</Label>
+            <Input
+              id="account"
+              inputMode="numeric"
+              maxLength={ACCOUNT_NUMBER_LENGTH}
+              placeholder="0123456789"
+              value={accountNumber}
+              disabled={available === 0n}
+              onChange={(event) =>
+                setAccountNumber(event.target.value.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH))
+              }
+            />
+          </div>
+
+          <Button type="submit" size="lg" disabled={submitting || available === 0n}>
+            {submitting ? 'Sending…' : 'Cash out'}
+          </Button>
+        </form>
+
+        {withdrawals.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-dim text-xs font-bold tracking-widest uppercase">
+              Recent cash-outs
+            </h2>
+            <ul className="border-hairline divide-y">
+              {withdrawals.map((withdrawal) => (
+                <li key={withdrawal.id} className="space-y-1 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-bold tabular-nums text-white">
+                      {formatStroops(withdrawal.amount_stroops)} {withdrawal.asset}
+                    </span>
+                    <Badge
+                      variant={
+                        withdrawal.status === 'completed'
+                          ? 'default'
+                          : withdrawal.status === 'failed'
+                            ? 'destructive'
+                            : 'secondary'
+                      }
+                    >
+                      {STATUS_LABEL[withdrawal.status] ?? withdrawal.status}
+                    </Badge>
+                  </div>
+                  {withdrawal.failure_reason && (
+                    <p className="text-dim text-xs">{withdrawal.failure_reason}</p>
+                  )}
+                </li>
               ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="account">Account number</Label>
-          <Input
-            id="account"
-            inputMode="numeric"
-            maxLength={ACCOUNT_NUMBER_LENGTH}
-            placeholder="0123456789"
-            value={accountNumber}
-            disabled={available === 0n}
-            onChange={(event) =>
-              setAccountNumber(event.target.value.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH))
-            }
-          />
-        </div>
-
-        <Button type="submit" size="lg" disabled={submitting || available === 0n}>
-          {submitting ? 'Sending…' : 'Cash out'}
-        </Button>
-      </form>
-
-      {withdrawals.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
-            Recent cash-outs
-          </h2>
-          <ul className="divide-border divide-y">
-            {withdrawals.map((withdrawal) => (
-              <li key={withdrawal.id} className="space-y-1 py-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium tabular-nums">
-                    {formatStroops(withdrawal.amount_stroops)} {withdrawal.asset}
-                  </span>
-                  <Badge
-                    variant={
-                      withdrawal.status === 'completed'
-                        ? 'default'
-                        : withdrawal.status === 'failed'
-                          ? 'destructive'
-                          : 'secondary'
-                    }
-                  >
-                    {STATUS_LABEL[withdrawal.status] ?? withdrawal.status}
-                  </Badge>
-                </div>
-                {withdrawal.failure_reason && (
-                  <p className="text-muted-foreground text-xs">{withdrawal.failure_reason}</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+            </ul>
+          </section>
+        )}
+      </div>
     </div>
   )
 }

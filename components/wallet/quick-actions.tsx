@@ -1,13 +1,11 @@
 import Link from 'next/link'
-import { ArrowDown, ArrowLeftRight, ArrowUpRight, Banknote, CreditCard, Zap } from 'lucide-react'
+import { ArrowDownToLine, Banknote, Receipt, Wallet } from 'lucide-react'
 
 const actions = [
-  { label: 'Swap',     icon: ArrowLeftRight, tint: '#1e40af', href: '/charge'       },
-  { label: 'Send',     icon: ArrowUpRight,   tint: '#166534', href: '/charge'       },
-  { label: 'Receive',  icon: ArrowDown,      tint: '#b1cd00', href: '/wallet'       },
-  { label: 'Instant',  icon: Zap,            tint: '#854d0e', href: '/charge'       },
-  { label: 'Card',     icon: CreditCard,     tint: '#b12a2a', href: '/charge'       },
-  { label: 'Cash out', icon: Banknote,       tint: '#10b981', href: '/withdraw'     },
+  { label: 'Charge', icon: Banknote, tint: '#166534', href: '/charge' },
+  { label: 'Payments', icon: Receipt, tint: '#1e40af', href: '/transactions' },
+  { label: 'Cash out', icon: ArrowDownToLine, tint: '#10b981', href: '/withdraw' },
+  { label: 'Wallet', icon: Wallet, tint: '#b1cd00', href: '/wallet' },
 ]
 
 export function QuickActions() {

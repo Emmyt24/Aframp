@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { AppNav } from '@/components/app-nav'
+import { WalletSidebar } from '@/components/wallet/wallet-sidebar'
 import { useSession } from '@/components/session-provider'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
@@ -17,16 +17,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Children below assume a session exists; don't mount them until it does.
   if (!ready || !session) {
     return (
-      <main className="flex min-h-dvh items-center justify-center">
+      <main className="dark bg-ink flex min-h-dvh items-center justify-center">
         <LoadingSpinner />
       </main>
     )
   }
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <main className="mx-auto w-full max-w-md flex-1 px-4 pt-6 pb-4">{children}</main>
-      <AppNav />
+    <div className="dark bg-ink font-brand flex min-h-dvh text-white">
+      <WalletSidebar />
+      <main className="min-w-0 flex-1 p-6 lg:p-8">{children}</main>
     </div>
   )
 }

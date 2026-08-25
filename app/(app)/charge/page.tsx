@@ -60,21 +60,14 @@ export default function ChargePage() {
   }
 
   return (
-    <div className="flex min-h-full flex-col gap-6">
+    <div className="mx-auto flex min-h-full max-w-sm flex-col gap-6">
       <div className="flex flex-1 flex-col items-center justify-center gap-2 py-8">
-        <p className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
-          Amount to charge
-        </p>
+        <p className="text-dim text-xs font-bold tracking-widest uppercase">Amount to charge</p>
         <p className="flex items-baseline gap-2 tabular-nums">
-          <span
-            className={cn(
-              'font-display text-5xl font-semibold tracking-tight',
-              !input && 'text-muted-foreground'
-            )}
-          >
+          <span className={cn('text-5xl font-bold tracking-tight', !input && 'text-dim')}>
             {input || '0'}
           </span>
-          <span className="text-muted-foreground text-lg font-medium">{ASSET}</span>
+          <span className="text-dim text-lg font-medium">{ASSET}</span>
         </p>
       </div>
 
