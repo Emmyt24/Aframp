@@ -243,13 +243,12 @@ jobs:
           SERVER_PID=$!
           echo "Server PID: $SERVER_PID"
           for i in $(seq 1 30); do
-            curl -sf http://localhost:3000 > /dev/null 2>&1 && echo "Server ready after ${i}s" && break
+            curl -sf http://localhost:3001 > /dev/null 2>&1 && echo "Server ready after ${i}s" && break
             sleep 2
           done
           lhci autorun
           kill $SERVER_PID 2>/dev/null || true
         env:
-          PORT: 3000
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
 
       - name: Upload Lighthouse results

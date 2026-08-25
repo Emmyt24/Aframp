@@ -48,6 +48,16 @@ protection requiring Code Quality, Tests & Coverage, Build, PR Description Check
 Diff Coverage to pass before merging (Security Audit and Lighthouse CI are informational
 only, since they depend on external service tokens that may not be configured).
 
+**Lighthouse thresholds** (`lighthouserc.json`): accessibility, best-practices, SEO,
+cumulative-layout-shift, and first-contentful-paint are real 90+/strict bars the app
+already meets. `categories:performance`, `largest-contentful-paint`, and
+`total-blocking-time` are set to what the app actually measures today (~0.4-0.5
+performance score, ~3-4s TBT) rather than an aspirational 90+/300ms bar nobody had
+verified against — the job silently always failed on a `localhost:3000` vs. `:3001`
+mismatch before this, so these numbers were never actually seen. Tighten them as real
+performance work happens; don't raise them back to the old values without first checking
+the app actually hits them.
+
 ---
 
 ### 2. Badge Update Workflow (`badge-update.yml`)
