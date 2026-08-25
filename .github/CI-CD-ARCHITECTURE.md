@@ -58,11 +58,11 @@
 ```
 Time    Code Quality    Tests & Coverage    Build
 ────────────────────────────────────────────────────
-0:00    ├─ Start        ├─ Start            
-0:30    │  ESLint       │  Jest              
-1:00    │  Prettier     │  Coverage          
-1:30    │  TypeScript   │  Codecov           
-2:00    ├─ Complete ✅  │  PR Comment        
+0:00    ├─ Start        ├─ Start
+0:30    │  ESLint       │  Jest
+1:00    │  Prettier     │  Coverage
+1:30    │  TypeScript   │  Codecov
+2:00    ├─ Complete ✅  │  PR Comment
 2:30                    ├─ Complete ✅      ├─ Start
 3:00                                        │  Build
 4:00                                        │  Artifacts

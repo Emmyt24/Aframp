@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Aframp',
     short_name: 'Aframp',
-    description: 'Africa\'s premier cNGN stablecoin payment platform',
+    description: "Africa's premier cNGN stablecoin payment platform",
     start_url: '/',
     display: 'standalone',
     background_color: '#000000',

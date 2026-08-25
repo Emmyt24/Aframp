@@ -7,10 +7,7 @@ export function Skeleton({ className }: { className?: string }) {
       initial={{ opacity: 0.75 }}
       animate={{ opacity: [0.75, 0.35, 0.75] }}
       transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
-      className={cn(
-        'relative overflow-hidden rounded bg-muted/40 dark:bg-muted/30',
-        className
-      )}
+      className={cn('relative overflow-hidden rounded bg-muted/40 dark:bg-muted/30', className)}
     >
       <motion.div
         className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"

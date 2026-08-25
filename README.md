@@ -51,6 +51,7 @@ Get AFRAMP running locally in under 5 minutes with our automated setup script or
 ### Automated Setup (Easiest) ⚡
 
 **Linux/Mac:**
+
 ```bash
 git clone https://github.com/your-org/Aframp.git
 cd Aframp
@@ -59,6 +60,7 @@ chmod +x scripts/setup.sh
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 git clone https://github.com/your-org/Aframp.git
 cd Aframp
@@ -66,6 +68,7 @@ cd Aframp
 ```
 
 The script will:
+
 - ✅ Check prerequisites (Node.js, Docker)
 - ✅ Create `.env.local` from template
 - ✅ Let you choose Docker or Node.js setup
@@ -114,26 +117,26 @@ Copy `.env.example` to `.env.local` and configure the following:
 
 ### Required Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_DEMO_MODE` | Enable mock wallet for testing (set to `false` in production) | `false` |
-| `NEXT_PUBLIC_CNGN_ISSUER` | Stellar CNGN token issuer address | `GXXXXXX...` |
+| Variable                  | Description                                                   | Example      |
+| ------------------------- | ------------------------------------------------------------- | ------------ |
+| `NEXT_PUBLIC_DEMO_MODE`   | Enable mock wallet for testing (set to `false` in production) | `false`      |
+| `NEXT_PUBLIC_CNGN_ISSUER` | Stellar CNGN token issuer address                             | `GXXXXXX...` |
 
 ### Payment Gateway Configuration
 
-| Variable | Description | Required For |
-|----------|-------------|--------------|
-| `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Paystack public key | Card payments |
-| `PAYSTACK_SECRET_KEY` | Paystack secret key (server-side) | Payment processing |
-| `NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY` | Flutterwave public key | Mobile money |
-| `FLUTTERWAVE_SECRET_KEY` | Flutterwave secret key (server-side) | Payment processing |
-| `FLUTTERWAVE_ENCRYPTION_KEY` | Flutterwave encryption key | Secure transactions |
+| Variable                             | Description                          | Required For        |
+| ------------------------------------ | ------------------------------------ | ------------------- |
+| `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`    | Paystack public key                  | Card payments       |
+| `PAYSTACK_SECRET_KEY`                | Paystack secret key (server-side)    | Payment processing  |
+| `NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY` | Flutterwave public key               | Mobile money        |
+| `FLUTTERWAVE_SECRET_KEY`             | Flutterwave secret key (server-side) | Payment processing  |
+| `FLUTTERWAVE_ENCRYPTION_KEY`         | Flutterwave encryption key           | Secure transactions |
 
 ### Optional Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_BILLS_WS_URL` | WebSocket URL for real-time bill updates | N/A |
+| Variable                   | Description                              | Default |
+| -------------------------- | ---------------------------------------- | ------- |
+| `NEXT_PUBLIC_BILLS_WS_URL` | WebSocket URL for real-time bill updates | N/A     |
 
 ### Getting API Keys
 
@@ -180,6 +183,7 @@ docker-compose -f docker-compose.prod.yml up -d
 ### Docker Environment Variables
 
 Pass environment variables via:
+
 - `.env.local` file (recommended)
 - Docker Compose `environment` section
 - `docker run -e` flags
@@ -245,17 +249,17 @@ docker push your-registry/aframp:latest
 
 ## 📦 Available Scripts
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server with hot-reload |
-| `npm run build` | Build optimized production bundle |
-| `npm start` | Start production server (requires build first) |
-| `npm test` | Run Jest test suite |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Generate test coverage report |
-| `npm run lint` | Check code for linting errors |
-| `npm run format` | Format code with Prettier |
-| `npm run type-check` | Run TypeScript type checking |
+| Command                 | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `npm run dev`           | Start development server with hot-reload       |
+| `npm run build`         | Build optimized production bundle              |
+| `npm start`             | Start production server (requires build first) |
+| `npm test`              | Run Jest test suite                            |
+| `npm run test:watch`    | Run tests in watch mode                        |
+| `npm run test:coverage` | Generate test coverage report                  |
+| `npm run lint`          | Check code for linting errors                  |
+| `npm run format`        | Format code with Prettier                      |
+| `npm run type-check`    | Run TypeScript type checking                   |
 
 ---
 

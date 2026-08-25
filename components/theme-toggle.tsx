@@ -21,7 +21,12 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" aria-label="Toggle theme">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-9 w-9 rounded-full"
+        aria-label="Toggle theme"
+      >
         <span className="sr-only">Toggle theme</span>
       </Button>
     )
@@ -39,12 +44,7 @@ export function ThemeToggle() {
     return 'Switch to system theme'
   }
 
-  const Icon =
-    theme === 'system'
-      ? Monitor
-      : resolvedTheme === 'dark'
-        ? Sun
-        : Moon
+  const Icon = theme === 'system' ? Monitor : resolvedTheme === 'dark' ? Sun : Moon
 
   return (
     <Button

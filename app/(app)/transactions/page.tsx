@@ -98,7 +98,9 @@ export default function TransactionsPage() {
       {payments.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-3 py-12 text-center">
           <EmptyStateIllustration variant="empty" className="size-20" />
-          <p className="text-dim text-sm">No payments yet. Charge a customer and they&apos;ll show up here.</p>
+          <p className="text-dim text-sm">
+            No payments yet. Charge a customer and they&apos;ll show up here.
+          </p>
         </div>
       ) : (
         <ul className="border-hairline mt-6 divide-y">

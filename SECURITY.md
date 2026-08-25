@@ -4,11 +4,11 @@
 
 We actively patch security vulnerabilities in the following versions:
 
-| Version | Supported |
-|---------|-----------|
-| `main` branch (latest) | ✅ |
-| Release tags < 30 days old | ✅ |
-| Older releases | ❌ (please upgrade) |
+| Version                    | Supported           |
+| -------------------------- | ------------------- |
+| `main` branch (latest)     | ✅                  |
+| Release tags < 30 days old | ✅                  |
+| Older releases             | ❌ (please upgrade) |
 
 ---
 
@@ -43,13 +43,13 @@ A good vulnerability report includes:
 
 ### What to Expect
 
-| Timeline | Action |
-|----------|--------|
-| Within **48 hours** | We acknowledge receipt and assign an internal tracking ID. |
-| Within **5 business days** | We confirm whether the report is accepted as a valid vulnerability and assign a severity (Critical / High / Medium / Low). |
-| Within **30 days** (Critical/High) | We publish a fix and a CVE (if applicable). |
-| Within **90 days** (Medium/Low) | We publish a fix in a regular release. |
-| After fix is deployed | We publicly credit you (unless you prefer to stay anonymous). |
+| Timeline                           | Action                                                                                                                     |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Within **48 hours**                | We acknowledge receipt and assign an internal tracking ID.                                                                 |
+| Within **5 business days**         | We confirm whether the report is accepted as a valid vulnerability and assign a severity (Critical / High / Medium / Low). |
+| Within **30 days** (Critical/High) | We publish a fix and a CVE (if applicable).                                                                                |
+| Within **90 days** (Medium/Low)    | We publish a fix in a regular release.                                                                                     |
+| After fix is deployed              | We publicly credit you (unless you prefer to stay anonymous).                                                              |
 
 We follow responsible disclosure: we will not take legal action against
 researchers who act in good faith and follow this policy.

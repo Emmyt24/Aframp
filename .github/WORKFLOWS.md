@@ -13,23 +13,40 @@ This document describes all GitHub Actions workflows configured for the Aframp p
 **Jobs:**
 
 #### Code Quality
+
 - **ESLint** - Linting with TypeScript support
 - **Prettier** - Code formatting check
 - **TypeScript** - Type checking
 
 #### Tests & Coverage
+
 - **Jest** - Unit and integration tests
 - **Coverage Report** - Generates coverage metrics
 - **Codecov Upload** - Uploads to Codecov service
 - **PR Comment** - Posts coverage summary on PRs
 
+#### PR Description Check (pull requests only)
+
+- Fails if the PR's Summary section is empty or left as the unedited template placeholder.
+
+#### Diff Coverage (pull requests only)
+
+- Runs `scripts/check-diff-coverage.js`, which requires 80% statement/line coverage on
+  files the PR actually adds or changes — not a repo-wide average. The repo has no
+  baseline test suite, so a flat global threshold would either block every PR forever or,
+  once softened, stop meaning anything; gating the diff is the realistic middle ground.
+
 #### Build
+
 - **Next.js Build** - Production build verification
 - **Artifact Upload** - Stores build for deployment
 
 **Duration:** ~10-15 minutes
 
-**Failure Handling:** Pipeline fails if any job fails, blocking merge
+**Failure Handling:** Pipeline fails if any job fails, blocking merge. `main` has branch
+protection requiring Code Quality, Tests & Coverage, Build, PR Description Check, and
+Diff Coverage to pass before merging (Security Audit and Lighthouse CI are informational
+only, since they depend on external service tokens that may not be configured).
 
 ---
 
@@ -46,6 +63,7 @@ This document describes all GitHub Actions workflows configured for the Aframp p
 - **Update README** - Commits badge update to main
 
 **Badge Colors:**
+
 - 🟢 Green: ≥80% coverage
 - 🟡 Yellow: 70-79% coverage
 - 🔴 Red: <70% coverage
@@ -61,15 +79,18 @@ This document describes all GitHub Actions workflows configured for the Aframp p
 **Jobs:**
 
 #### Deploy Preview
+
 - Deploys PR to unique Vercel URL
 - Comments preview link on PR
 - Runs on PR open/sync/reopen
 
 #### Cleanup Preview
+
 - Deletes preview deployment
 - Runs on PR close
 
 **Features:**
+
 - Automatic URL generation
 - PR comments with preview link
 - Auto-cleanup on close
@@ -83,6 +104,7 @@ This document describes all GitHub Actions workflows configured for the Aframp p
 **Purpose:** Monitors production deployment health
 
 **Checks:**
+
 - API endpoint availability
 - Response time monitoring
 - Error rate tracking
@@ -115,6 +137,7 @@ concurrency:
 ```
 
 This means:
+
 - Only one CI run per branch at a time
 - Previous runs are cancelled when new code is pushed
 - Saves GitHub Actions minutes
@@ -151,16 +174,19 @@ Add to README:
 ### Common Issues
 
 **Build Fails:**
+
 - Check `npm run build` locally
 - Verify environment variables
 - Check TypeScript errors: `npm run type-check`
 
 **Tests Fail:**
+
 - Run `npm run test:coverage` locally
 - Check coverage thresholds
 - Review test output
 
 **Linting Fails:**
+
 - Run `npm run lint` locally
 - Run `npm run format` to auto-fix
 - Check ESLint rules

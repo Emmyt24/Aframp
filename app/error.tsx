@@ -17,8 +17,7 @@ export default function Error({
 
   // ApiError with status 0 means the backend is unreachable (network failure /
   // CORS rejection). Show a specific message so users aren't left confused.
-  const isBackendDown =
-    'status' in error && (error as { status: number }).status === 0
+  const isBackendDown = 'status' in error && (error as { status: number }).status === 0
 
   return (
     <ErrorLayout

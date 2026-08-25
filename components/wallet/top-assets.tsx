@@ -23,9 +23,7 @@ export function TopAssets({ balances }: { balances: Balance[] }) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-white">{balance.asset}</p>
                   {balance.pending > 0n && (
-                    <p className="text-dim text-xs">
-                      {formatStroops(balance.pending)} confirming
-                    </p>
+                    <p className="text-dim text-xs">{formatStroops(balance.pending)} confirming</p>
                   )}
                 </div>
 

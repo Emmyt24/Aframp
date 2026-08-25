@@ -112,30 +112,83 @@ jobs:
             const fs = require('fs');
             const coverage = JSON.parse(fs.readFileSync('./coverage/coverage-summary.json', 'utf8'));
             const total = coverage.total;
-            
+
             const badge = (pct) => {
               if (pct >= 80) return '🟢';
               if (pct >= 70) return '🟡';
               return '🔴';
             };
-            
-            const comment = `## 📊 Coverage Report
-            
-| Metric | Coverage | Status |
-|--------|----------|--------|
-| Lines | ${total.lines.pct}% | ${badge(total.lines.pct)} |
-| Statements | ${total.statements.pct}% | ${badge(total.statements.pct)} |
-| Functions | ${total.functions.pct}% | ${badge(total.functions.pct)} |
-| Branches | ${total.branches.pct}% | ${badge(total.branches.pct)} |
 
-🟢 = Excellent (≥80%) | 🟡 = Good (≥70%) | 🔴 = Needs Improvement (<70%)`;
-            
+            const row = (label, metric) => `| ${label} | ${metric.pct}% | ${badge(metric.pct)} |`;
+
+            const comment = [
+              '## 📊 Coverage Report',
+              '',
+              '| Metric | Coverage | Status |',
+              '|--------|----------|--------|',
+              row('Lines', total.lines),
+              row('Statements', total.statements),
+              row('Functions', total.functions),
+              row('Branches', total.branches),
+              '',
+              '🟢 = Excellent (≥80%) | 🟡 = Good (≥70%) | 🔴 = Needs Improvement (<70%)',
+            ].join('\n');
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: comment
             });
+
+  pr-description:
+    name: PR Description Check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a filled-in Summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.pull_request.body || ''
+            const match = body.match(/## Summary\s*([\s\S]*?)(?=\n##|\n---|$)/)
+            const summary = (match ? match[1] : '')
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/^Closes #.*$/gim, '')
+              .trim()
+            if (summary.length < 15) {
+              core.setFailed(
+                "This PR's Summary section is empty or unedited from the template. " +
+                'Explain what the PR does and why before requesting review.'
+              )
+            }
+
+  diff-coverage:
+    name: Diff Coverage
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage -- --watchAll=false
+
+      - name: Require 80% coverage on changed files
+        run: |
+          node scripts/check-diff-coverage.js \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}"
 
   build:
     name: Build

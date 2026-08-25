@@ -26,22 +26,26 @@ Thank you for your interest in contributing to AFRAMP! This guide will help you 
 ### Setup
 
 1. **Fork the repository**
+
    ```bash
    # On GitHub, click "Fork"
    ```
 
 2. **Clone your fork**
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/aframp.git
    cd aframp
    ```
 
 3. **Add upstream remote**
+
    ```bash
    git remote add upstream https://github.com/aframp/aframp.git
    ```
 
 4. **Install dependencies**
+
    ```bash
    npm install
    ```
@@ -67,6 +71,7 @@ git checkout -b feature/descriptive-name
 ```
 
 **Branch naming conventions:**
+
 - `feature/` - New features
 - `fix/` - Bug fixes
 - `docs/` - Documentation
@@ -98,6 +103,7 @@ git commit -m "feat: add new payment method"
 ```
 
 **Commit message format:**
+
 ```
 <type>(<scope>): <subject>
 
@@ -107,6 +113,7 @@ git commit -m "feat: add new payment method"
 ```
 
 **Types:**
+
 - `feat` - New feature
 - `fix` - Bug fix
 - `docs` - Documentation
@@ -116,6 +123,7 @@ git commit -m "feat: add new payment method"
 - `chore` - Maintenance
 
 **Example:**
+
 ```
 feat(kyc): add document verification
 
@@ -255,7 +263,7 @@ describe('Button', () => {
   it('calls onClick when clicked', async () => {
     const onClick = jest.fn()
     render(<Button label="Click me" onClick={onClick} />)
-    
+
     await userEvent.click(screen.getByText('Click me'))
     expect(onClick).toHaveBeenCalled()
   })
@@ -288,6 +296,7 @@ npm run test:coverage
 ### Before Submitting
 
 1. **Run local CI checks**
+
    ```bash
    ./test-ci-local.sh
    ```
@@ -319,24 +328,30 @@ npm run test:coverage
 
 ```markdown
 ## Description
+
 Brief description of changes
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation update
 
 ## Related Issues
+
 Closes #123
 
 ## Testing
+
 Describe testing performed
 
 ## Screenshots (if applicable)
+
 Add screenshots for UI changes
 
 ## Checklist
+
 - [ ] Tests pass
 - [ ] Coverage maintained
 - [ ] Documentation updated

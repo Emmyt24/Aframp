@@ -19,13 +19,13 @@ export function FinalCta() {
           <Wallet className="size-4" />
           Connect Wallet
         </a>
-        <a
-          href="#"
+        <button
+          type="button"
           className="border-edge bg-surface flex items-center gap-2 rounded-full border px-6 py-3.5 text-sm font-bold text-white transition-colors hover:bg-white/5"
         >
           <Sparkles className="size-4" />
           Mint NFT
-        </a>
+        </button>
       </div>
 
       <p className="text-dim mt-7 text-xs">

@@ -34,7 +34,7 @@ const nextConfig = {
     minimumCacheTTL: 60,
   },
   output: 'standalone',
-  async headers() {
+  headers() {
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
@@ -51,6 +51,7 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
+          { key: 'Content-Security-Policy', value: csp },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },

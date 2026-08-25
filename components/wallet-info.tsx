@@ -63,7 +63,10 @@ export function WalletInfo({
           <div className="flex items-center gap-2">
             <h2 className="truncate text-lg font-semibold">{walletName}</h2>
             {active && (
-              <BadgeCheck className="text-primary size-5 shrink-0" aria-label="Has received payments" />
+              <BadgeCheck
+                className="text-primary size-5 shrink-0"
+                aria-label="Has received payments"
+              />
             )}
           </div>
           <div className="mt-1 flex items-center gap-1">

@@ -73,7 +73,8 @@ export default function WithdrawPage() {
   function validate(): string | null {
     if (stroops === null || stroops <= 0n) return 'Enter an amount to cash out.'
     if (!isWholeKobo(stroops)) return 'Amount must be a whole number of kobo.'
-    if (stroops < MINIMUM_STROOPS) return `The smallest cash-out is ${formatStroops(MINIMUM_STROOPS)} ${ASSET}.`
+    if (stroops < MINIMUM_STROOPS)
+      return `The smallest cash-out is ${formatStroops(MINIMUM_STROOPS)} ${ASSET}.`
     if (stroops > available) return 'That is more than your available balance.'
     if (!bankCode) return 'Choose your bank.'
     if (accountNumber.length !== ACCOUNT_NUMBER_LENGTH) {
@@ -179,7 +180,9 @@ export default function WithdrawPage() {
               value={accountNumber}
               disabled={available === 0n}
               onChange={(event) =>
-                setAccountNumber(event.target.value.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH))
+                setAccountNumber(
+                  event.target.value.replace(/\D/g, '').slice(0, ACCOUNT_NUMBER_LENGTH)
+                )
               }
             />
           </div>

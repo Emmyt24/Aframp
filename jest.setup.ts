@@ -26,6 +26,7 @@ global.BroadcastChannel = BroadcastChannel as any
 globalThis.BroadcastChannel = BroadcastChannel as any
 
 // Now load undici after globals are set
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- a static import would hoist above the globals this module reads at load time
 const { fetch, Headers, FormData, Request, Response } = require('undici')
 
 const polyfills = {
@@ -39,11 +40,21 @@ const polyfills = {
   Request: { value: Request, writable: true, enumerable: true, configurable: true },
   Response: { value: Response, writable: true, enumerable: true, configurable: true },
   Event: { value: globalThis.Event, writable: true, enumerable: true, configurable: true },
-  EventTarget: { value: globalThis.EventTarget, writable: true, enumerable: true, configurable: true },
+  EventTarget: {
+    value: globalThis.EventTarget,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  },
   ReadableStream: { value: ReadableStream, writable: true, enumerable: true, configurable: true },
   TransformStream: { value: TransformStream, writable: true, enumerable: true, configurable: true },
   WritableStream: { value: WritableStream, writable: true, enumerable: true, configurable: true },
-  BroadcastChannel: { value: BroadcastChannel, writable: true, enumerable: true, configurable: true },
+  BroadcastChannel: {
+    value: BroadcastChannel,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  },
 }
 
 Object.defineProperties(global, polyfills)

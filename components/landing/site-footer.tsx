@@ -27,9 +27,9 @@ export function SiteFooter() {
               <ul className="mt-4 space-y-2.5">
                 {links.map((l) => (
                   <li key={l}>
-                    <a href="#" className="text-dim text-xs hover:text-white">
+                    <button type="button" className="text-dim text-xs hover:text-white">
                       {l}
-                    </a>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -42,9 +42,9 @@ export function SiteFooter() {
           <ul className="ml-auto flex gap-5">
             {socials.map((s) => (
               <li key={s}>
-                <a href="#" className="text-dim text-xs hover:text-white">
+                <button type="button" className="text-dim text-xs hover:text-white">
                   {s}
-                </a>
+                </button>
               </li>
             ))}
           </ul>

@@ -26,13 +26,13 @@ export function SiteFooter() {
             <ul className="mt-4 flex gap-4">
               {socials.map(({ label, icon: Icon }) => (
                 <li key={label}>
-                  <a
-                    href="#"
+                  <button
+                    type="button"
                     aria-label={label}
                     className="text-charcoal/70 dark:text-white/60 hover:text-brand block"
                   >
                     <Icon className="size-4" />
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -43,12 +43,12 @@ export function SiteFooter() {
             <ul className="mt-3 space-y-2">
               {footer.links.map((l) => (
                 <li key={l}>
-                  <a
-                    href="#"
+                  <button
+                    type="button"
                     className="text-charcoal/80 dark:text-white/70 hover:text-brand text-xs underline"
                   >
                     {l}
-                  </a>
+                  </button>
                 </li>
               ))}
             </ul>
