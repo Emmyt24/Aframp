@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { ArrowRight, MoreHorizontal } from 'lucide-react'
 
 import { formatUsd, swap, wallet } from '@/lib/wallet-data'
@@ -84,13 +85,13 @@ export function QuickConvert() {
         <Row label="Rate" value={swap.rate} />
       </div>
 
-      <button
-        type="button"
+      <Link
+        href="/charge"
         className="from-cta-from to-cta-to mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r py-3 text-sm font-bold text-black transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
       >
         Confirm swap
         <ArrowRight className="size-4" strokeWidth={2.5} />
-      </button>
+      </Link>
 
       <div className="mt-5 space-y-3">
         <Row label="Fee" value={`${swap.feePct}% · ${swap.feeAmount}`} />

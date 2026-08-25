@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { api, type Balance, type Withdrawal, type WithdrawalStatus } from '@/lib/api'
+import { api, ApiError, type Balance, type Withdrawal, type WithdrawalStatus } from '@/lib/api'
 import { formatStroops, isWholeKobo, parseAmountToStroops } from '@/lib/money'
 import { BANKS } from '@/lib/banks'
 import { useAuthenticatedSession } from '@/components/session-provider'
@@ -53,6 +53,7 @@ export default function WithdrawPage() {
         setWithdrawals(nextWithdrawals)
       } catch (cause) {
         if (cause instanceof DOMException && cause.name === 'AbortError') return
+        if (cause instanceof ApiError && cause.status === 0) throw cause
         setError(cause instanceof Error ? cause.message : 'Could not load your cash-out details')
         setBalances([])
       }

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { assets, formatPct, formatSigned, formatUsd } from '@/lib/wallet-data'
 
@@ -10,10 +11,10 @@ export function TopAssets() {
           const up = a.changePct >= 0
           return (
             <li key={a.name}>
-              <div
+              <Link
+                href="/transactions"
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors',
-                  // The design highlights one row to show the hover/selected state.
                   i === 1 ? 'bg-raised' : 'hover:bg-raised/60'
                 )}
               >
@@ -43,7 +44,7 @@ export function TopAssets() {
                     {formatSigned(a.changeUsd)}
                   </p>
                 </div>
-              </div>
+              </Link>
             </li>
           )
         })}

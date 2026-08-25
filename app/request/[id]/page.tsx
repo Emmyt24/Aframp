@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ErrorState } from '@/components/ui/error-state'
-import { api, type PaymentRequest } from '@/lib/api'
+import { api, ApiError, type PaymentRequest } from '@/lib/api'
 import { formatStroops } from '@/lib/money'
 
 /** The backend confirms a deposit within one Horizon poll cycle (60s default). */
@@ -38,6 +38,7 @@ export default function PaymentRequestPage({ params }: { params: Promise<{ id: s
         return next
       } catch (cause) {
         if (cause instanceof DOMException && cause.name === 'AbortError') return null
+        if (cause instanceof ApiError && cause.status === 0) throw cause
         setError(cause instanceof Error ? cause.message : 'Could not load this charge')
         return null
       }

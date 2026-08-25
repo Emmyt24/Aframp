@@ -39,7 +39,7 @@ export function SiteNav() {
           >
             <Sun className="size-[18px]" />
           </button>
-          <Link href="/dashboard" className="text-dim hidden text-sm hover:text-white sm:block">
+          <Link href="/home" className="text-dim hidden text-sm hover:text-white sm:block">
             Explore
           </Link>
           <Link

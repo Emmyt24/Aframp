@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ErrorState } from '@/components/ui/error-state'
 import { EmptyStateIllustration } from '@/components/ui/empty-state-illustration'
-import { api, type Balance, type Payment, type PaymentStatus } from '@/lib/api'
+import { api, ApiError, type Balance, type Payment, type PaymentStatus } from '@/lib/api'
 import { formatStroops } from '@/lib/money'
 import { useAuthenticatedSession } from '@/components/session-provider'
 
@@ -52,6 +52,7 @@ export default function TransactionsPage() {
         setBalances(nextBalances)
       } catch (cause) {
         if (cause instanceof DOMException && cause.name === 'AbortError') return
+        if (cause instanceof ApiError && cause.status === 0) throw cause
         setError(cause instanceof Error ? cause.message : 'Could not load your payments')
       }
     },

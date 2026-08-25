@@ -1,3 +1,7 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   Activity,
   ArrowLeftRight,
@@ -13,16 +17,16 @@ import { cn } from '@/lib/utils'
 import { wallet } from '@/lib/wallet-data'
 
 const main = [
-  { label: 'Dashboard', icon: LayoutGrid, active: true },
-  { label: 'Wallets', icon: WalletIcon },
-  { label: 'Swaps', icon: ArrowLeftRight },
-  { label: 'Markets', icon: LineChart },
+  { label: 'Dashboard', icon: LayoutGrid,      href: '/home'         },
+  { label: 'Wallets',   icon: WalletIcon,      href: '/wallet'       },
+  { label: 'Swaps',     icon: ArrowLeftRight,  href: '/charge'       },
+  { label: 'Markets',   icon: LineChart,       href: '/transactions' },
 ]
 
 const tools = [
-  { label: 'Activity', icon: Activity },
-  { label: 'Security', icon: ShieldCheck },
-  { label: 'Settings', icon: Settings2 },
+  { label: 'Activity', icon: Activity,     href: '/transactions' },
+  { label: 'Security', icon: ShieldCheck,  href: '/wallet'       },
+  { label: 'Settings', icon: Settings2,    href: '/wallet'       },
 ]
 
 function NavGroup({
@@ -30,29 +34,34 @@ function NavGroup({
   items,
 }: {
   title: string
-  items: { label: string; icon: typeof LayoutGrid; active?: boolean }[]
+  items: { label: string; icon: typeof LayoutGrid; href: string }[]
 }) {
+  const pathname = usePathname()
+
   return (
     <div className="space-y-1">
       <p className="text-dim px-3 pb-2 text-[11px] font-bold tracking-[0.12em] uppercase">
         {title}
       </p>
-      {items.map(({ label, icon: Icon, active }) => (
-        <a
-          key={label}
-          href="#"
-          aria-current={active ? 'page' : undefined}
-          className={cn(
-            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
-            active
-              ? 'bg-nav-active font-bold text-white'
-              : 'text-dim hover:bg-raised hover:text-bright'
-          )}
-        >
-          <Icon className="size-4 shrink-0" strokeWidth={1.75} />
-          {label}
-        </a>
-      ))}
+      {items.map(({ label, icon: Icon, href }) => {
+        const active = pathname === href
+        return (
+          <Link
+            key={label}
+            href={href}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
+              active
+                ? 'bg-nav-active font-bold text-white'
+                : 'text-dim hover:bg-raised hover:text-bright'
+            )}
+          >
+            <Icon className="size-4 shrink-0" strokeWidth={1.75} />
+            {label}
+          </Link>
+        )
+      })}
     </div>
   )
 }

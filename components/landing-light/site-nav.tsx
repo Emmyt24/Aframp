@@ -31,7 +31,7 @@ export function SiteNav() {
           ))}
           <li>
             <Link
-              href="/dashboard"
+              href="/home"
               className="hover:text-brand dark:hover:text-brand"
             >
               Dashboard
