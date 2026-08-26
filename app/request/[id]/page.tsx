@@ -38,8 +38,9 @@ export default function PaymentRequestPage({ params }: { params: Promise<{ id: s
         return next
       } catch (cause) {
         if (cause instanceof DOMException && cause.name === 'AbortError') return null
-        if (cause instanceof ApiError && cause.status === 0) throw cause
-        setError(cause instanceof Error ? cause.message : 'Could not load this charge')
+        if (cause instanceof ApiError && cause.status === 0)
+          setError("Can't reach the payment server. Please try again in a moment.")
+        else setError(cause instanceof Error ? cause.message : 'Could not load this charge')
         return null
       }
     },

@@ -9,8 +9,15 @@ import { api, ApiError, type Balance, type Payment, type PaymentStatus } from '@
 import { formatStroops } from '@/lib/money'
 import { useAuthenticatedSession } from '@/components/session-provider'
 
-/** Testnet today; swap for `public` when the backend points at mainnet Horizon. */
-const EXPLORER_BASE = 'https://stellar.expert/explorer/testnet/tx'
+/**
+ * Map the configured Stellar network to the matching stellar.expert explorer
+ * segment. Defaults to 'testnet' so local dev links still resolve if the env
+ * var is absent. Production deployments set NEXT_PUBLIC_STELLAR_NETWORK=PUBLIC
+ * (see vercel.json), which maps to the 'public' explorer segment.
+ */
+const STELLAR_NETWORK = process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? 'TESTNET'
+const EXPLORER_SEGMENT = STELLAR_NETWORK === 'PUBLIC' ? 'public' : 'testnet'
+const EXPLORER_BASE = `https://stellar.expert/explorer/${EXPLORER_SEGMENT}/tx`
 
 const STATUS_LABEL: Record<PaymentStatus, string> = {
   detected: 'Detected',
@@ -52,8 +59,9 @@ export default function TransactionsPage() {
         setBalances(nextBalances)
       } catch (cause) {
         if (cause instanceof DOMException && cause.name === 'AbortError') return
-        if (cause instanceof ApiError && cause.status === 0) throw cause
-        setError(cause instanceof Error ? cause.message : 'Could not load your payments')
+        if (cause instanceof ApiError && cause.status === 0)
+          setError("Can't reach the payment server. Please try again in a moment.")
+        else setError(cause instanceof Error ? cause.message : 'Could not load your payments')
       }
     },
     [token]
