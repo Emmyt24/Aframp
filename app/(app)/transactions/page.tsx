@@ -9,8 +9,13 @@ import { api, ApiError, type Balance, type Payment, type PaymentStatus } from '@
 import { formatStroops } from '@/lib/money'
 import { useAuthenticatedSession } from '@/components/session-provider'
 
-/** Testnet today; swap for `public` when the backend points at mainnet Horizon. */
-const EXPLORER_BASE = 'https://stellar.expert/explorer/testnet/tx'
+/**
+ * Driven by NEXT_PUBLIC_STELLAR_NETWORK so receipt links keep working when the
+ * backend points at mainnet Horizon instead of testnet. Defaults to testnet
+ * when the env var is absent or set to anything other than `public`.
+ */
+const STELLAR_NETWORK = process.env.NEXT_PUBLIC_STELLAR_NETWORK === 'public' ? 'public' : 'testnet'
+const EXPLORER_BASE = `https://stellar.expert/explorer/${STELLAR_NETWORK}/tx`
 
 const STATUS_LABEL: Record<PaymentStatus, string> = {
   detected: 'Detected',
