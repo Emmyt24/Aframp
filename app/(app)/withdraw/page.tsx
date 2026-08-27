@@ -18,6 +18,7 @@ import { api, ApiError, type Balance, type Withdrawal, type WithdrawalStatus } f
 import { formatStroops, isWholeKobo, parseAmountToStroops } from '@/lib/money'
 import { BANKS } from '@/lib/banks'
 import { useAuthenticatedSession } from '@/components/session-provider'
+import { useSep24Flow } from '@/hooks/use-sep24-flow'
 
 /** Withdrawals are cNGN-only server-side; XLM balances have no cash-out path. */
 const ASSET = 'cNGN'
@@ -34,6 +35,7 @@ const STATUS_LABEL: Record<WithdrawalStatus, string> = {
 
 export default function WithdrawPage() {
   const { token } = useAuthenticatedSession()
+  const sep24 = useSep24Flow(token)
   const [balances, setBalances] = useState<Balance[] | null>(null)
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([])
   const [amount, setAmount] = useState('')
@@ -191,6 +193,30 @@ export default function WithdrawPage() {
             {submitting ? 'Sending…' : 'Cash out'}
           </Button>
         </form>
+
+        <div className="bg-panel border-hairline space-y-3 rounded-2xl border p-5">
+          <h2 className="text-dim text-xs font-bold tracking-widest uppercase">
+            Prefer your own rails?
+          </h2>
+          <p className="text-dim text-sm">
+            Skip the bank form above and withdraw straight through the anchor&apos;s own
+            interactive flow (SEP-0024) instead.
+          </p>
+          {sep24.error && (
+            <Alert variant="destructive">
+              <AlertDescription>{sep24.error}</AlertDescription>
+            </Alert>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={sep24.busy === 'withdraw' || available === 0n}
+            onClick={() => void sep24.startWithdraw(ASSET)}
+          >
+            {sep24.busy === 'withdraw' ? 'Opening anchor…' : 'Withdraw via anchor'}
+          </Button>
+        </div>
 
         {withdrawals.length > 0 && (
           <section className="space-y-3">

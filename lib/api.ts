@@ -114,6 +114,13 @@ export interface PaymentRequest {
   sep7_uri: string | null
 }
 
+/** SEP-0024 "interactive" response — the URL to open in a popup/iframe. */
+export interface Sep24Interactive {
+  type: 'interactive_customer_info_needed'
+  url: string
+  id: string
+}
+
 export type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 export interface Withdrawal {
@@ -272,4 +279,12 @@ export const api = {
 
   listWithdrawals: (token: string, limit = 50, signal?: AbortSignal) =>
     request<Withdrawal[]>(`/withdrawals?limit=${limit}`, { token, signal }),
+
+  /** SEP-0024: kicks off the anchor's interactive deposit flow. */
+  startSep24Deposit: (token: string, asset = 'cNGN') =>
+    request<Sep24Interactive>('/sep24/deposit', { method: 'POST', token, body: { asset } }),
+
+  /** SEP-0024: kicks off the anchor's interactive withdrawal flow. */
+  startSep24Withdrawal: (token: string, asset = 'cNGN') =>
+    request<Sep24Interactive>('/sep24/withdraw', { method: 'POST', token, body: { asset } }),
 }

@@ -7,9 +7,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { api, ApiError, type Me, type Wallet } from '@/lib/api'
 import { useAuthenticatedSession } from '@/components/session-provider'
+import { useSep24Flow } from '@/hooks/use-sep24-flow'
 
 export default function WalletPage() {
   const { token } = useAuthenticatedSession()
+  const sep24 = useSep24Flow(token)
   const [wallet, setWallet] = useState<Wallet | null>(null)
   const [me, setMe] = useState<Me | null>(null)
   const [loading, setLoading] = useState(true)
@@ -109,7 +111,34 @@ export default function WalletPage() {
               charge — you never need to share it directly.
             </p>
           </section>
-        ) : (
+        ) : null}
+
+        {wallet && (
+          <section className="bg-panel border-hairline space-y-3 rounded-2xl border p-5">
+            <h2 className="text-dim text-xs font-bold tracking-widest uppercase">
+              Deposit via anchor
+            </h2>
+            <p className="text-dim text-sm">
+              Fund your balance directly through the SEP-0024 anchor flow — bank transfer, card,
+              or other rails the anchor supports.
+            </p>
+            {sep24.error && (
+              <Alert variant="destructive">
+                <AlertDescription>{sep24.error}</AlertDescription>
+              </Alert>
+            )}
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={sep24.busy === 'deposit'}
+              onClick={() => void sep24.startDeposit('cNGN')}
+            >
+              {sep24.busy === 'deposit' ? 'Opening anchor…' : 'Deposit'}
+            </Button>
+          </section>
+        )}
+
+        {!wallet && (
           <section className="bg-panel border-hairline space-y-3 rounded-2xl border p-5">
             <h2 className="text-lg font-bold">Set up your payment address</h2>
             <p className="text-dim text-sm">
