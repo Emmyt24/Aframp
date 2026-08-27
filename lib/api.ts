@@ -7,6 +7,8 @@
  * Errors always come back as `{ "error": "message" }`.
  */
 
+import type { KycInitiateRequest, KycInitiateResponse, KycStatusResponse } from '@/types/kyc'
+
 /** Backend ids are UUIDs; aliased for readability, not validated here. */
 type UUID = string
 
@@ -255,4 +257,11 @@ export const api = {
 
   listWithdrawals: (token: string, limit = 50, signal?: AbortSignal) =>
     request<Withdrawal[]>(`/withdrawals?limit=${limit}`, { token, signal }),
+
+  /** Dedicated status endpoint so the gate can be checked without pulling the full profile. */
+  getKycStatus: (token: string, signal?: AbortSignal) =>
+    request<KycStatusResponse>('/kyc-status', { token, signal }),
+
+  initiateKyc: (token: string, body: KycInitiateRequest) =>
+    request<KycInitiateResponse>('/kyc/initiate', { method: 'POST', token, body }),
 }
