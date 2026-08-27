@@ -49,6 +49,12 @@ export interface AuthResponse {
   merchant_id: UUID | null
 }
 
+/** SEP-0010 challenge transaction, ready to be signed client-side. */
+export interface Sep10Challenge {
+  transaction: string
+  network_passphrase: string
+}
+
 export interface Me {
   user_id: UUID
   email: string
@@ -197,6 +203,17 @@ export const api = {
 
   login: (email: string, password: string) =>
     request<AuthResponse>('/login', { method: 'POST', body: { email, password } }),
+
+  /** SEP-0010 step 1: fetch a challenge transaction for a Stellar address to sign. */
+  getStellarChallenge: (address: string) =>
+    request<Sep10Challenge>(`/auth/stellar/challenge?address=${encodeURIComponent(address)}`),
+
+  /** SEP-0010 step 2: hand back the wallet-signed challenge, receive a session JWT. */
+  verifyStellarChallenge: (signedTransaction: string) =>
+    request<AuthResponse>('/auth/stellar/verify', {
+      method: 'POST',
+      body: { transaction: signedTransaction },
+    }),
 
   /** The JWT carries only ids; this is how anything human-readable is rendered. */
   getMe: (token: string, signal?: AbortSignal) => request<Me>('/me', { token, signal }),
