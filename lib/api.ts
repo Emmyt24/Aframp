@@ -8,6 +8,7 @@
  */
 
 import type { KycInitiateRequest, KycInitiateResponse, KycStatusResponse } from '@/types/kyc'
+import type { OfframpFeeBreakdown, OfframpOrder } from '@/types/offramp'
 
 /** Backend ids are UUIDs; aliased for readability, not validated here. */
 type UUID = string
@@ -264,4 +265,29 @@ export const api = {
 
   initiateKyc: (token: string, body: KycInitiateRequest) =>
     request<KycInitiateResponse>('/kyc/initiate', { method: 'POST', token, body }),
+
+  getOfframpRate: (token: string, asset: string, fiatCurrency: string, signal?: AbortSignal) =>
+    request<{ rate: number; lastUpdated: number }>(
+      `/offramp/rate?asset=${asset}&fiat=${fiatCurrency}`,
+      { token, signal }
+    ),
+
+  getOfframpFees: (
+    token: string,
+    asset: string,
+    fiatCurrency: string,
+    amount: number,
+    signal?: AbortSignal
+  ) =>
+    request<OfframpFeeBreakdown>(
+      `/offramp/fees?asset=${asset}&fiat=${fiatCurrency}&amount=${amount}`,
+      { token, signal }
+    ),
+
+  createOfframpOrder: (token: string, assetId: string, amount: number, fiatCurrency: string) =>
+    request<OfframpOrder>('/offramp/orders', {
+      method: 'POST',
+      token,
+      body: { asset_id: assetId, amount, fiat_currency: fiatCurrency },
+    }),
 }
