@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { BalanceFigure } from '@/components/wallet/balance-figure'
+import { WalletQrCode } from '@/components/wallet/wallet-qr-code'
 import { api, ApiError, type Balance, type Me, type Wallet } from '@/lib/api'
 import { useAuthenticatedSession } from '@/components/session-provider'
 
@@ -118,6 +119,7 @@ export default function WalletPage() {
             <p className="bg-raised rounded-xl p-4 text-xs break-all text-white">
               {wallet.address}
             </p>
+            <WalletQrCode address={wallet.address} />
             <Button variant="outline" onClick={copyAddress} className="w-full">
               {copied ? (
                 <>
