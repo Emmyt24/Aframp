@@ -3,13 +3,14 @@
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import QRCode from 'react-qr-code'
-import { Check, Clock, TriangleAlert } from 'lucide-react'
+import { Check, Clock, Copy, ExternalLink, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ErrorState } from '@/components/ui/error-state'
 import { api, ApiError, type PaymentRequest } from '@/lib/api'
 import { formatStroops } from '@/lib/money'
+import { isValidSep7Uri } from '@/lib/sep7'
 
 /** The backend confirms a deposit within one Horizon poll cycle (60s default). */
 const POLL_INTERVAL_MS = 3000
@@ -28,6 +29,13 @@ export default function PaymentRequestPage({ params }: { params: Promise<{ id: s
   const [request, setRequest] = useState<PaymentRequest | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [remaining, setRemaining] = useState(0)
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  async function copySep7Link(uri: string) {
+    await navigator.clipboard.writeText(uri)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -137,8 +145,8 @@ export default function PaymentRequestPage({ params }: { params: Promise<{ id: s
         <p className="font-display text-4xl font-semibold tracking-tight tabular-nums">{amount}</p>
       </header>
 
-      {request.sep7_uri ? (
-        <div className="flex justify-center">
+      {isValidSep7Uri(request.sep7_uri) ? (
+        <div className="flex flex-col items-center gap-3">
           <div className="rounded-3xl bg-white p-5 shadow-sm">
             <QRCode
               value={request.sep7_uri}
@@ -146,6 +154,34 @@ export default function PaymentRequestPage({ params }: { params: Promise<{ id: s
               level="M"
               title={`Pay ${amount} to ${request.address}`}
             />
+          </div>
+          <p className="text-muted-foreground text-center text-xs">
+            Scan with Freighter or Lobstr to open this payment in-wallet.
+          </p>
+          <div className="flex w-full gap-2">
+            <Button asChild variant="outline" size="sm" className="flex-1">
+              <a href={request.sep7_uri}>
+                <ExternalLink className="size-4" aria-hidden />
+                Open in wallet
+              </a>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => void copySep7Link(request.sep7_uri!)}
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="size-4" aria-hidden /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="size-4" aria-hidden /> Copy link
+                </>
+              )}
+            </Button>
           </div>
         </div>
       ) : (
