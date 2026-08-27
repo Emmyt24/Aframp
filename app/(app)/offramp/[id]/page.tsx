@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { BankDetailsForm } from '@/components/offramp/bank-details-form'
+import { OfframpStatus } from '@/components/offramp/offramp-status'
 import { api, ApiError } from '@/lib/api'
 import { useAuthenticatedSession } from '@/components/session-provider'
 import type { OfframpOrder } from '@/types/offramp'
@@ -54,9 +55,7 @@ export default function OfframpOrderPage({ params }: { params: Promise<{ id: str
       {order.status === 'pending_bank_details' ? (
         <BankDetailsForm order={order} onSubmitted={setOrder} />
       ) : (
-        <p className="text-dim text-sm">
-          Order {order.id} — status: {order.status}
-        </p>
+        <OfframpStatus order={order} />
       )}
     </div>
   )

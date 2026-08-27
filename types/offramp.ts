@@ -52,6 +52,12 @@ export interface OfframpOrder {
   status: OfframpOrderStatus
   bankCode?: string
   accountNumber?: string
+  /** Set once the payout provider confirms the transfer — the terminal-state summary amount. */
+  payoutAmount?: number
+  /** Provider payout reference, shown to the user for their own records/support tickets. */
+  payoutReference?: string
+  /** Human-readable reason set only when status is 'failed'. */
+  failureReason?: string
 }
 
 /** Field labels differ per payout rail even though the shape (code + account/number) is shared. */

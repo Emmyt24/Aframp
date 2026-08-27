@@ -304,4 +304,8 @@ export const api = {
       token,
       body: { bank_code: details.bankCode, account_number: details.accountNumber },
     }),
+
+  /** Re-queues a failed payout without making the user re-enter bank details. */
+  retryOfframpOrder: (token: string, orderId: string) =>
+    request<OfframpOrder>(`/offramp/orders/${orderId}/retry`, { method: 'POST', token, body: {} }),
 }
