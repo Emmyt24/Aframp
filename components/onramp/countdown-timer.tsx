@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -15,10 +15,16 @@ export function CountdownTimer({ expiresAt, onExpire }: CountdownTimerProps) {
     seconds: 0,
   })
   const [isExpired, setIsExpired] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const expiresAtRef = useRef(expiresAt.getTime())
+
+  useEffect(() => {
+    expiresAtRef.current = expiresAt.getTime()
+  }, [expiresAt])
 
   useEffect(() => {
     const calculateTimeLeft = () => {
-      const difference = expiresAt.getTime() - new Date().getTime()
+      const difference = expiresAtRef.current - Date.now()
 
       if (difference <= 0) {
         setIsExpired(true)
@@ -32,13 +38,17 @@ export function CountdownTimer({ expiresAt, onExpire }: CountdownTimerProps) {
       }
     }
 
-    const timer = setInterval(() => {
-      const newTime = calculateTimeLeft()
-      setTimeLeft(newTime)
+    setTimeLeft(calculateTimeLeft())
+
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => {
+      setTimeLeft(calculateTimeLeft())
     }, 1000)
 
-    return () => clearInterval(timer)
-  }, [expiresAt, onExpire])
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
 
   const isUrgent = timeLeft.minutes < 5
 
