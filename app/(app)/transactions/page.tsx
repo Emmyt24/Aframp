@@ -1,13 +1,18 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ErrorState } from '@/components/ui/error-state'
 import { EmptyStateIllustration } from '@/components/ui/empty-state-illustration'
+import { PaymentFiltersBar } from '@/components/transactions/payment-filters-bar'
 import { api, ApiError, type Balance, type Payment, type PaymentStatus } from '@/lib/api'
 import { formatStroops } from '@/lib/money'
+import { DEFAULT_PAYMENT_FILTERS, filterPayments } from '@/lib/payment-filters'
 import { useAuthenticatedSession } from '@/components/session-provider'
+
+/** Client-side filtering only makes sense below this size; beyond it we'd want server-side search. */
+const CLIENT_SIDE_FILTER_LIMIT = 200
 
 /** Testnet today; swap for `public` when the backend points at mainnet Horizon. */
 const EXPLORER_BASE = 'https://stellar.expert/explorer/testnet/tx'
@@ -39,6 +44,7 @@ export default function TransactionsPage() {
   const [payments, setPayments] = useState<Payment[] | null>(null)
   const [balances, setBalances] = useState<Balance[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [filters, setFilters] = useState(DEFAULT_PAYMENT_FILTERS)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -64,6 +70,12 @@ export default function TransactionsPage() {
     void load(controller.signal)
     return () => controller.abort()
   }, [load])
+
+  const filteringEnabled = (payments?.length ?? 0) < CLIENT_SIDE_FILTER_LIMIT
+  const visiblePayments = useMemo(() => {
+    if (!payments) return []
+    return filteringEnabled ? filterPayments(payments, filters) : payments
+  }, [payments, filters, filteringEnabled])
 
   if (error) return <ErrorState message={error} onRetry={() => void load()} />
   if (!payments) {
@@ -95,6 +107,18 @@ export default function TransactionsPage() {
         )}
       </header>
 
+      {payments.length > 0 && (
+        <div className="mt-6">
+          <PaymentFiltersBar filters={filters} onChange={setFilters} />
+          {!filteringEnabled && (
+            <p className="text-dim mt-2 text-xs">
+              Showing all {payments.length} payments — search and filters apply below{' '}
+              {CLIENT_SIDE_FILTER_LIMIT} results.
+            </p>
+          )}
+        </div>
+      )}
+
       {payments.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-3 py-12 text-center">
           <EmptyStateIllustration variant="empty" className="size-20" />
@@ -102,9 +126,14 @@ export default function TransactionsPage() {
             No payments yet. Charge a customer and they&apos;ll show up here.
           </p>
         </div>
+      ) : visiblePayments.length === 0 ? (
+        <div className="mt-6 flex flex-col items-center gap-3 py-12 text-center">
+          <EmptyStateIllustration variant="empty" className="size-20" />
+          <p className="text-dim text-sm">No payments match your search and filters.</p>
+        </div>
       ) : (
         <ul className="border-hairline mt-6 divide-y">
-          {payments.map((payment) => (
+          {visiblePayments.map((payment) => (
             <li key={payment.id} className="flex items-center justify-between gap-3 py-3">
               <div className="min-w-0 space-y-1">
                 <p className="text-base font-bold tabular-nums text-white">
