@@ -6,6 +6,8 @@ import { Delete } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -36,11 +38,15 @@ const ASSET_OPTIONS: { value: ChargeAsset; label: string; disabled: boolean }[] 
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'backspace'] as const
 
+/** Stellar memo text is capped at 28 bytes; keep well under that. */
+const MEMO_MAX_LENGTH = 28
+
 export default function ChargePage() {
   const { token } = useAuthenticatedSession()
   const router = useRouter()
   const [input, setInput] = useState('')
   const [asset, setAsset] = useState<ChargeAsset>('XLM')
+  const [memo, setMemo] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -69,7 +75,13 @@ export default function ChargePage() {
     setSubmitting(true)
     setError(null)
     try {
-      const request = await api.createPaymentRequest(token, stroops, asset)
+      const request = await api.createPaymentRequest(
+        token,
+        stroops,
+        asset,
+        undefined,
+        memo.trim() || undefined
+      )
       // Never silently fall back to XLM: if the asset we asked for has no
       // scannable code, surface that instead of showing the wrong currency.
       if (!request.sep7_uri && asset !== 'XLM') {
@@ -113,6 +125,19 @@ export default function ChargePage() {
             </SelectContent>
           </Select>
           {!CNGN_ENABLED && <Badge variant="secondary">cNGN coming soon</Badge>}
+        </div>
+
+        <div className="w-full space-y-1.5">
+          <Label htmlFor="memo" className="text-dim text-xs">
+            Note / memo (optional)
+          </Label>
+          <Input
+            id="memo"
+            placeholder="e.g. Table 4"
+            value={memo}
+            maxLength={MEMO_MAX_LENGTH}
+            onChange={(event) => setMemo(event.target.value)}
+          />
         </div>
       </div>
 
