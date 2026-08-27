@@ -1,14 +1,24 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ErrorState } from '@/components/ui/error-state'
 import { EmptyStateIllustration } from '@/components/ui/empty-state-illustration'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { api, ApiError, type Balance, type Payment, type PaymentStatus } from '@/lib/api'
 import { formatStroops } from '@/lib/money'
 import { useAuthenticatedSession } from '@/components/session-provider'
+
+const STATUS_FILTER_ALL = 'all'
+const ASSET_FILTER_ALL = 'all'
 
 /** Backend paginates by offset; this is both the initial page size and page size for "Load more". */
 const PAGE_SIZE = 50
@@ -43,6 +53,51 @@ function formatWhen(iso: string): string {
   })
 }
 
+const CSV_HEADER = ['date', 'amount', 'asset', 'status', 'tx_hash', 'memo']
+
+/** Quotes a field only when it contains a comma, quote, or newline — RFC 4180. */
+function csvField(value: string): string {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
+}
+
+/**
+ * Payment records don't carry a memo (that lives on the payment *request*
+ * that generated them, which isn't joined in here) — the column is emitted
+ * for the accounting template's sake and left blank.
+ */
+function paymentsToCsv(payments: Payment[]): string {
+  const rows = payments.map((payment) =>
+    [
+      payment.created_at,
+      formatStroops(payment.amount_stroops),
+      payment.asset,
+      STATUS_LABEL[payment.status] ?? payment.status,
+      payment.tx_hash,
+      '',
+    ]
+      .map(csvField)
+      .join(',')
+  )
+  return [CSV_HEADER.join(','), ...rows].join('\n')
+}
+
+function downloadCsv(filename: string, csv: string) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+/** `aframp-transactions-YYYY-MM-DD.csv`, using today's date. */
+function exportFilename(): string {
+  return `aframp-transactions-${new Date().toISOString().slice(0, 10)}.csv`
+}
+
 export default function TransactionsPage() {
   const { token } = useAuthenticatedSession()
   const [payments, setPayments] = useState<Payment[] | null>(null)
@@ -51,6 +106,8 @@ export default function TransactionsPage() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<string>(STATUS_FILTER_ALL)
+  const [assetFilter, setAssetFilter] = useState<string>(ASSET_FILTER_ALL)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -95,6 +152,23 @@ export default function TransactionsPage() {
     return () => controller.abort()
   }, [load])
 
+  const assets = useMemo(
+    () => Array.from(new Set((payments ?? []).map((payment) => payment.asset))).sort(),
+    [payments]
+  )
+
+  const filteredPayments = useMemo(() => {
+    return (payments ?? []).filter((payment) => {
+      if (statusFilter !== STATUS_FILTER_ALL && payment.status !== statusFilter) return false
+      if (assetFilter !== ASSET_FILTER_ALL && payment.asset !== assetFilter) return false
+      return true
+    })
+  }, [payments, statusFilter, assetFilter])
+
+  function exportCsv() {
+    downloadCsv(exportFilename(), paymentsToCsv(filteredPayments))
+  }
+
   if (error) return <ErrorState message={error} onRetry={() => void load()} />
   if (!payments) {
     return (
@@ -107,7 +181,45 @@ export default function TransactionsPage() {
   return (
     <div>
       <header className="space-y-3">
-        <h1 className="text-2xl font-bold tracking-tight">Payments</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">Payments</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-36" aria-label="Filter by status">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={STATUS_FILTER_ALL}>All statuses</SelectItem>
+                {Object.entries(STATUS_LABEL).map(([status, label]) => (
+                  <SelectItem key={status} value={status}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={assetFilter} onValueChange={setAssetFilter}>
+              <SelectTrigger className="w-28" aria-label="Filter by asset">
+                <SelectValue placeholder="Asset" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ASSET_FILTER_ALL}>All assets</SelectItem>
+                {assets.map((asset) => (
+                  <SelectItem key={asset} value={asset}>
+                    {asset}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={filteredPayments.length === 0}
+              onClick={exportCsv}
+            >
+              Export CSV
+            </Button>
+          </div>
+        </div>
         {balances.length > 0 && (
           <ul className="grid gap-2 sm:grid-cols-2">
             {balances.map((balance) => (
@@ -125,16 +237,18 @@ export default function TransactionsPage() {
         )}
       </header>
 
-      {payments.length === 0 ? (
+      {filteredPayments.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-3 py-12 text-center">
           <EmptyStateIllustration variant="empty" className="size-20" />
           <p className="text-dim text-sm">
-            No payments yet. Charge a customer and they&apos;ll show up here.
+            {payments.length === 0
+              ? "No payments yet. Charge a customer and they'll show up here."
+              : 'No payments match the current filters.'}
           </p>
         </div>
       ) : (
         <ul className="border-hairline mt-6 divide-y">
-          {payments.map((payment) => (
+          {filteredPayments.map((payment) => (
             <li key={payment.id} className="flex items-center justify-between gap-3 py-3">
               <div className="min-w-0 space-y-1">
                 <p className="text-base font-bold tabular-nums text-white">
