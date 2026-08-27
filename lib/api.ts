@@ -49,6 +49,12 @@ export interface AuthResponse {
   merchant_id: UUID | null
 }
 
+export interface Session {
+  token: string
+  userId: string
+  merchantId: string | null
+}
+
 export interface Me {
   user_id: UUID
   email: string
@@ -191,12 +197,62 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return text ? parseWithBigInts<T>(text) : (undefined as T)
 }
 
+/**
+ * Calls through Next.js API route to set httpOnly cookie
+ */
+async function requestWithCookie<T>(
+  path: string,
+  options: { method?: 'GET' | 'POST'; body?: unknown } = {}
+): Promise<T> {
+  const { method = 'GET', body } = options
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+
+  const text = await response.text()
+
+  if (!response.ok) {
+    let message = `Request failed (${response.status})`
+    try {
+      const parsed = JSON.parse(text) as { error?: string }
+      if (parsed.error) message = parsed.error
+    } catch {}
+    throw new ApiError(message, response.status)
+  }
+
+  return text ? JSON.parse(text) : (undefined as T)
+}
+
 export const api = {
   signup: (email: string, password: string, name: string) =>
-    request<AuthResponse>('/signup', { method: 'POST', body: { email, password, name } }),
+    requestWithCookie<AuthResponse>('/api/auth/signup', {
+      method: 'POST',
+      body: { email, password, name },
+    }),
 
   login: (email: string, password: string) =>
-    request<AuthResponse>('/login', { method: 'POST', body: { email, password } }),
+    requestWithCookie<AuthResponse>('/api/auth/login', {
+      method: 'POST',
+      body: { email, password },
+    }),
+
+  getSession: () => fetch('/api/auth/session').then(r => r.json() as Promise<{ session: Session | null }>),
+
+  logout: () =>
+    requestWithCookie<{ success: boolean }>('/api/auth/logout', {
+      method: 'POST',
+    }),
+
+  resetPasswordRequest: (email: string) =>
+    request<{ message: string }>('/password-reset/request', { method: 'POST', body: { email } }),
+
+  resetPassword: (token: string, password: string) =>
+    request<{ message: string }>('/password-reset/confirm', { method: 'POST', body: { token, password } }),
 
   /** The JWT carries only ids; this is how anything human-readable is rendered. */
   getMe: (token: string, signal?: AbortSignal) => request<Me>('/me', { token, signal }),
