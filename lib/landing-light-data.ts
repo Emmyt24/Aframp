@@ -72,6 +72,48 @@ export const useCaseTiles: UseCaseTile[] = [
   },
 ]
 
+export type FeatureItem = {
+  title: string
+  blurb: string
+  metric?: { value: string; label: string }
+}
+
+// Distinct from `useCaseTiles` below — these are product capabilities
+// (what Aframp does), not customer scenarios (who uses it and why).
+export const features: FeatureItem[] = [
+  {
+    title: 'Live, Transparent Rates',
+    blurb: 'The NGN/cNGN rate you see is the rate you get — pulled fresh on every page load.',
+  },
+  {
+    title: 'Instant Settlement',
+    blurb: 'Payments confirm on the Stellar ledger in seconds, not days.',
+    metric: { value: '~5s', label: 'avg. ledger close' },
+  },
+  {
+    title: 'Non-Custodial by Design',
+    blurb: 'Your funds stay in your wallet until the moment you choose to send them.',
+  },
+  {
+    title: 'Multiple Funding Methods',
+    blurb: 'Bank transfer, card, or mobile money — pick whatever is fastest where you are.',
+  },
+  {
+    title: 'Bank-Grade Security',
+    blurb: 'Encrypted end-to-end, with the same controls regulated fintechs rely on.',
+  },
+  {
+    title: 'Built for Africa',
+    blurb: 'Country-aware pricing and payout rails, not a one-size-fits-all product.',
+  },
+]
+
+export const pricingIntro = {
+  eyebrow: 'Pricing',
+  title: 'Simple, transparent fees',
+  blurb: "See exactly what you'll pay before you send — no hidden charges, ever.",
+}
+
 export const steps = [
   {
     title: 'Enter Amount & Recipient/Your Wallet',
