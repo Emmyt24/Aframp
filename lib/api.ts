@@ -290,4 +290,18 @@ export const api = {
       token,
       body: { asset_id: assetId, amount, fiat_currency: fiatCurrency },
     }),
+
+  getOfframpOrder: (token: string, id: string, signal?: AbortSignal) =>
+    request<OfframpOrder>(`/offramp/orders/${id}`, { token, signal }),
+
+  submitOfframpBankDetails: (
+    token: string,
+    orderId: string,
+    details: { bankCode?: string; accountNumber: string }
+  ) =>
+    request<OfframpOrder>(`/offramp/orders/${orderId}/bank-details`, {
+      method: 'POST',
+      token,
+      body: { bank_code: details.bankCode, account_number: details.accountNumber },
+    }),
 }
