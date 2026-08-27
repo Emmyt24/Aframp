@@ -209,8 +209,13 @@ export const api = {
   getBalances: (token: string, signal?: AbortSignal) =>
     request<Balance[]>('/balance', { token, signal }),
 
-  listTransactions: (token: string, limit = 50, signal?: AbortSignal) =>
-    request<Payment[]>(`/transactions?limit=${limit}`, { token, signal }),
+  /**
+   * The backend paginates by offset, not cursor — there is no `next_cursor`
+   * in the response, just a flat array. Callers infer `hasMore` by comparing
+   * the returned length against `limit`.
+   */
+  listTransactions: (token: string, limit = 50, offset = 0, signal?: AbortSignal) =>
+    request<Payment[]>(`/transactions?limit=${limit}&offset=${offset}`, { token, signal }),
 
   createPaymentRequest: (
     token: string,

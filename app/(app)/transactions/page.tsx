@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { ErrorState } from '@/components/ui/error-state'
 import { EmptyStateIllustration } from '@/components/ui/empty-state-illustration'
 import { api, ApiError, type Balance, type Payment, type PaymentStatus } from '@/lib/api'
 import { formatStroops } from '@/lib/money'
 import { useAuthenticatedSession } from '@/components/session-provider'
+
+/** Backend paginates by offset; this is both the initial page size and page size for "Load more". */
+const PAGE_SIZE = 50
 
 /**
  * Driven by NEXT_PUBLIC_STELLAR_NETWORK so receipt links keep working when the
@@ -44,17 +48,21 @@ export default function TransactionsPage() {
   const [payments, setPayments] = useState<Payment[] | null>(null)
   const [balances, setBalances] = useState<Balance[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
       setError(null)
       try {
         const [nextPayments, nextBalances] = await Promise.all([
-          api.listTransactions(token, 50, signal),
+          api.listTransactions(token, PAGE_SIZE, 0, signal),
           api.getBalances(token, signal),
         ])
         setPayments(nextPayments)
         setBalances(nextBalances)
+        setHasMore(nextPayments.length === PAGE_SIZE)
       } catch (cause) {
         if (cause instanceof DOMException && cause.name === 'AbortError') return
         if (cause instanceof ApiError && cause.status === 0) throw cause
@@ -63,6 +71,23 @@ export default function TransactionsPage() {
     },
     [token]
   )
+
+  const loadMore = useCallback(async () => {
+    if (!payments || loadingMore || !hasMore) return
+    setLoadingMore(true)
+    setLoadMoreError(null)
+    try {
+      const next = await api.listTransactions(token, PAGE_SIZE, payments.length)
+      setPayments((current) => [...(current ?? []), ...next])
+      setHasMore(next.length === PAGE_SIZE)
+    } catch (cause) {
+      setLoadMoreError(
+        cause instanceof Error ? cause.message : 'Could not load more payments'
+      )
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [token, payments, loadingMore, hasMore])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -133,6 +158,15 @@ export default function TransactionsPage() {
             </li>
           ))}
         </ul>
+      )}
+
+      {payments.length > 0 && hasMore && (
+        <div className="mt-4 flex flex-col items-center gap-2">
+          {loadMoreError && <p className="text-destructive text-xs">{loadMoreError}</p>}
+          <Button variant="secondary" size="sm" disabled={loadingMore} onClick={() => void loadMore()}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </Button>
+        </div>
       )}
     </div>
   )
