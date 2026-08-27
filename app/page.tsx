@@ -5,6 +5,7 @@ import { Hero } from '@/components/landing-light/hero'
 import { HowItWorks } from '@/components/landing-light/how-it-works'
 import { Pricing } from '@/components/landing-light/pricing'
 import { SiteFooter } from '@/components/landing-light/site-footer'
+import { Trust } from '@/components/landing-light/trust'
 import { UseCases } from '@/components/landing-light/use-cases'
 import { WhyUs } from '@/components/landing-light/why-us'
 
@@ -26,6 +27,7 @@ export default function Home() {
         <Features />
         <UseCases />
         <Pricing />
+        <Trust />
         <Faq />
         <WhyUs />
         <FinalCta />
