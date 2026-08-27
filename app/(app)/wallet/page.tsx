@@ -5,7 +5,7 @@ import { Check, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { BalanceFigure } from '@/components/wallet/balance-figure'
+import { AssetCards } from '@/components/wallet/asset-cards'
 import { WalletQrCode } from '@/components/wallet/wallet-qr-code'
 import { api, ApiError, type Balance, type Me, type Wallet } from '@/lib/api'
 import { useAuthenticatedSession } from '@/components/session-provider'
@@ -86,7 +86,7 @@ export default function WalletPage() {
         {me?.email && <p className="text-dim mt-1 truncate text-sm">{me.email}</p>}
       </header>
 
-      <div className="mt-6 max-w-xl space-y-5">
+      <div className="mt-6 max-w-2xl space-y-5">
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -94,20 +94,9 @@ export default function WalletPage() {
         )}
 
         {wallet && balances.length > 0 && (
-          <section className="bg-panel border-hairline space-y-4 rounded-2xl border p-5">
+          <section className="space-y-2">
             <h2 className="text-dim text-xs font-bold tracking-widest uppercase">Balances</h2>
-            <ul className="space-y-4">
-              {balances.map((balance) => (
-                <li key={balance.asset}>
-                  <BalanceFigure
-                    asset={balance.asset}
-                    available={balance.available}
-                    pending={balance.pending}
-                    size="sm"
-                  />
-                </li>
-              ))}
-            </ul>
+            <AssetCards balances={balances} />
           </section>
         )}
 
