@@ -216,7 +216,8 @@ export const api = {
     token: string,
     amountStroops: bigint,
     asset?: string,
-    expiresInSecs?: number
+    expiresInSecs?: number,
+    memo?: string
   ) =>
     request<PaymentRequest>('/payment-requests', {
       method: 'POST',
@@ -225,6 +226,7 @@ export const api = {
         amount_stroops: amountStroops,
         ...(asset ? { asset } : {}),
         ...(expiresInSecs ? { expires_in_secs: expiresInSecs } : {}),
+        ...(memo ? { memo } : {}),
       },
     }),
 

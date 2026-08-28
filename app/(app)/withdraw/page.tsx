@@ -62,10 +62,16 @@ export default function WithdrawPage() {
     [token]
   )
 
+  // Refetch on an interval too, since the payout provider can flip a
+  // withdrawal from pending -> completed/failed without any client action.
   useEffect(() => {
     const controller = new AbortController()
     void load(controller.signal)
-    return () => controller.abort()
+    const poll = setInterval(() => void load(), 15_000)
+    return () => {
+      controller.abort()
+      clearInterval(poll)
+    }
   }, [load])
 
   const available = balances?.find((balance) => balance.asset === ASSET)?.available ?? 0n
@@ -95,9 +101,15 @@ export default function WithdrawPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await api.createWithdrawal(token, stroops!, bankCode, accountNumber, ASSET)
+      const created = await api.createWithdrawal(token, stroops!, bankCode, accountNumber, ASSET)
+      // Show the new withdrawal instantly instead of waiting on a refetch —
+      // the list otherwise only picked up the new entry on the next manual
+      // reload or the background poll.
+      setWithdrawals((current) => [created, ...current])
       setAmount('')
-      await load()
+      setBankCode('')
+      setAccountNumber('')
+      void load()
     } catch (cause) {
       // A 502 carries Paystack's own message — show it rather than a generic one.
       setError(cause instanceof Error ? cause.message : 'Cash-out failed')
