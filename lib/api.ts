@@ -49,6 +49,12 @@ export interface AuthResponse {
   merchant_id: UUID | null
 }
 
+/** SEP-0010 challenge transaction, ready to be signed client-side. */
+export interface Sep10Challenge {
+  transaction: string
+  network_passphrase: string
+}
+
 export interface Me {
   user_id: UUID
   email: string
@@ -106,6 +112,13 @@ export interface PaymentRequest {
   created_at: string
   /** null for any asset with no configured issuer — currently everything but XLM. */
   sep7_uri: string | null
+}
+
+/** SEP-0024 "interactive" response — the URL to open in a popup/iframe. */
+export interface Sep24Interactive {
+  type: 'interactive_customer_info_needed'
+  url: string
+  id: string
 }
 
 export type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'failed'
@@ -198,6 +211,17 @@ export const api = {
   login: (email: string, password: string) =>
     request<AuthResponse>('/login', { method: 'POST', body: { email, password } }),
 
+  /** SEP-0010 step 1: fetch a challenge transaction for a Stellar address to sign. */
+  getStellarChallenge: (address: string) =>
+    request<Sep10Challenge>(`/auth/stellar/challenge?address=${encodeURIComponent(address)}`),
+
+  /** SEP-0010 step 2: hand back the wallet-signed challenge, receive a session JWT. */
+  verifyStellarChallenge: (signedTransaction: string) =>
+    request<AuthResponse>('/auth/stellar/verify', {
+      method: 'POST',
+      body: { transaction: signedTransaction },
+    }),
+
   /** The JWT carries only ids; this is how anything human-readable is rendered. */
   getMe: (token: string, signal?: AbortSignal) => request<Me>('/me', { token, signal }),
 
@@ -257,4 +281,12 @@ export const api = {
 
   listWithdrawals: (token: string, limit = 50, signal?: AbortSignal) =>
     request<Withdrawal[]>(`/withdrawals?limit=${limit}`, { token, signal }),
+
+  /** SEP-0024: kicks off the anchor's interactive deposit flow. */
+  startSep24Deposit: (token: string, asset = 'cNGN') =>
+    request<Sep24Interactive>('/sep24/deposit', { method: 'POST', token, body: { asset } }),
+
+  /** SEP-0024: kicks off the anchor's interactive withdrawal flow. */
+  startSep24Withdrawal: (token: string, asset = 'cNGN') =>
+    request<Sep24Interactive>('/sep24/withdraw', { method: 'POST', token, body: { asset } }),
 }

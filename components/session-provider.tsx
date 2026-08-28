@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api, setUnauthorizedHandler, type AuthResponse } from '@/lib/api'
+import { connectFreighter, signChallengeTransaction } from '@/lib/freighter'
 
 const STORAGE_KEY = 'aframp.session'
 
@@ -17,6 +18,8 @@ interface SessionContextValue {
   ready: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<void>
+  /** SEP-0010: connect Freighter, sign the backend's challenge, exchange for a session. */
+  signInWithFreighter: () => Promise<void>
   signOut: () => void
 }
 
@@ -68,6 +71,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     [persist]
   )
 
+  const signInWithFreighter = useCallback(async () => {
+    const address = await connectFreighter()
+    const challenge = await api.getStellarChallenge(address)
+    const signedTransaction = await signChallengeTransaction(
+      challenge.transaction,
+      challenge.network_passphrase
+    )
+    persist(toSession(await api.verifyStellarChallenge(signedTransaction)))
+  }, [persist])
+
   const signOut = useCallback(() => {
     window.localStorage.removeItem(STORAGE_KEY)
     setSession(null)
@@ -81,8 +94,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [signOut])
 
   const value = useMemo(
-    () => ({ session, ready, signIn, signUp, signOut }),
-    [session, ready, signIn, signUp, signOut]
+    () => ({ session, ready, signIn, signUp, signInWithFreighter, signOut }),
+    [session, ready, signIn, signUp, signInWithFreighter, signOut]
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

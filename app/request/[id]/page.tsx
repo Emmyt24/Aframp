@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import QRCode from 'react-qr-code'
-import { Check, Clock, TriangleAlert } from 'lucide-react'
+import { Check, Clock, Copy, ExternalLink, TriangleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
@@ -166,8 +166,8 @@ export default function PaymentRequestPage({ params }: { params: Promise<{ id: s
         <p className="font-display text-4xl font-semibold tracking-tight tabular-nums">{amount}</p>
       </header>
 
-      {request.sep7_uri ? (
-        <div className="flex justify-center">
+      {isValidSep7Uri(request.sep7_uri) ? (
+        <div className="flex flex-col items-center gap-3">
           <div className="rounded-3xl bg-white p-5 shadow-sm">
             <QRCode
               value={request.sep7_uri}
@@ -175,6 +175,34 @@ export default function PaymentRequestPage({ params }: { params: Promise<{ id: s
               level="M"
               title={`Pay ${amount} to ${request.address}`}
             />
+          </div>
+          <p className="text-muted-foreground text-center text-xs">
+            Scan with Freighter or Lobstr to open this payment in-wallet.
+          </p>
+          <div className="flex w-full gap-2">
+            <Button asChild variant="outline" size="sm" className="flex-1">
+              <a href={request.sep7_uri}>
+                <ExternalLink className="size-4" aria-hidden />
+                Open in wallet
+              </a>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => void copySep7Link(request.sep7_uri!)}
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="size-4" aria-hidden /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="size-4" aria-hidden /> Copy link
+                </>
+              )}
+            </Button>
           </div>
         </div>
       ) : (
