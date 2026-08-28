@@ -5,13 +5,16 @@ import { Check, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { api, ApiError, type Me, type Wallet } from '@/lib/api'
+import { AssetCards } from '@/components/wallet/asset-cards'
+import { WalletQrCode } from '@/components/wallet/wallet-qr-code'
+import { api, ApiError, type Balance, type Me, type Wallet } from '@/lib/api'
 import { useAuthenticatedSession } from '@/components/session-provider'
 
 export default function WalletPage() {
   const { token } = useAuthenticatedSession()
   const [wallet, setWallet] = useState<Wallet | null>(null)
   const [me, setMe] = useState<Me | null>(null)
+  const [balances, setBalances] = useState<Balance[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,6 +39,11 @@ export default function WalletPage() {
       else setError(cause instanceof Error ? cause.message : 'Could not load your account')
     } finally {
       setLoading(false)
+    }
+    try {
+      setBalances(await api.getBalances(token))
+    } catch {
+      // Non-fatal: the address above is what matters if this fails.
     }
   }, [token])
 
@@ -79,11 +87,18 @@ export default function WalletPage() {
         {me?.email && <p className="text-dim mt-1 truncate text-sm">{me.email}</p>}
       </header>
 
-      <div className="mt-6 max-w-xl space-y-5">
+      <div className="mt-6 max-w-2xl space-y-5">
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
+        )}
+
+        {wallet && balances.length > 0 && (
+          <section className="space-y-2">
+            <h2 className="text-dim text-xs font-bold tracking-widest uppercase">Balances</h2>
+            <AssetCards balances={balances} />
+          </section>
         )}
 
         {wallet ? (
@@ -94,6 +109,7 @@ export default function WalletPage() {
             <p className="bg-raised rounded-xl p-4 text-xs break-all text-white">
               {wallet.address}
             </p>
+            <WalletQrCode address={wallet.address} />
             <Button variant="outline" onClick={copyAddress} className="w-full">
               {copied ? (
                 <>
