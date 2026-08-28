@@ -108,6 +108,12 @@ export interface PaymentRequest {
   sep7_uri: string | null
 }
 
+export interface ResolvedAccount {
+  account_number: string
+  account_name: string
+  bank_code: string
+}
+
 export type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
 export interface Withdrawal {
@@ -209,8 +215,13 @@ export const api = {
   getBalances: (token: string, signal?: AbortSignal) =>
     request<Balance[]>('/balance', { token, signal }),
 
-  listTransactions: (token: string, limit = 50, signal?: AbortSignal) =>
-    request<Payment[]>(`/transactions?limit=${limit}`, { token, signal }),
+  /**
+   * The backend paginates by offset, not cursor — there is no `next_cursor`
+   * in the response, just a flat array. Callers infer `hasMore` by comparing
+   * the returned length against `limit`.
+   */
+  listTransactions: (token: string, limit = 50, offset = 0, signal?: AbortSignal) =>
+    request<Payment[]>(`/transactions?limit=${limit}&offset=${offset}`, { token, signal }),
 
   createPaymentRequest: (
     token: string,
@@ -236,6 +247,24 @@ export const api = {
   /** Deliberately public — a customer's wallet reads this without an account. */
   getPaymentRequest: (id: string, signal?: AbortSignal) =>
     request<PaymentRequest>(`/payment-requests/${id}`, { signal }),
+
+  /**
+   * Proxies to Paystack's account resolution API server-side so the Paystack
+   * secret key never touches the browser. Rejects with a 404 ApiError when
+   * the account number/bank code pair doesn't resolve to a real account.
+   */
+  resolveAccount: (
+    token: string,
+    bankCode: string,
+    accountNumber: string,
+    signal?: AbortSignal
+  ) =>
+    request<ResolvedAccount>('/accounts/resolve', {
+      method: 'POST',
+      token,
+      signal,
+      body: { bank_code: bankCode, account_number: accountNumber },
+    }),
 
   createWithdrawal: (
     token: string,
