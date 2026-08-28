@@ -31,7 +31,8 @@ export default function WalletPage() {
     } catch (cause) {
       // 400 "no wallet created yet" is the expected state for a new merchant.
       if (cause instanceof ApiError && cause.status === 400) setWallet(null)
-      else if (cause instanceof ApiError && cause.status === 0) throw cause
+      else if (cause instanceof ApiError && cause.status === 0)
+        setError("Can't reach the payment server. Please try again in a moment.")
       else setError(cause instanceof Error ? cause.message : 'Could not load your account')
     } finally {
       setLoading(false)
