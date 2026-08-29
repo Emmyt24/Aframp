@@ -52,6 +52,12 @@ export interface AuthResponse {
   merchant_id: UUID | null
 }
 
+/** SEP-0010 challenge transaction, ready to be signed client-side. */
+export interface Sep10Challenge {
+  transaction: string
+  network_passphrase: string
+}
+
 export interface Me {
   user_id: UUID
   email: string
@@ -109,6 +115,12 @@ export interface PaymentRequest {
   created_at: string
   /** null for any asset with no configured issuer — currently everything but XLM. */
   sep7_uri: string | null
+}
+
+export interface ResolvedAccount {
+  account_number: string
+  account_name: string
+  bank_code: string
 }
 
 export type WithdrawalStatus = 'pending' | 'processing' | 'completed' | 'failed'
@@ -201,6 +213,17 @@ export const api = {
   login: (email: string, password: string) =>
     request<AuthResponse>('/login', { method: 'POST', body: { email, password } }),
 
+  /** SEP-0010 step 1: fetch a challenge transaction for a Stellar address to sign. */
+  getStellarChallenge: (address: string) =>
+    request<Sep10Challenge>(`/auth/stellar/challenge?address=${encodeURIComponent(address)}`),
+
+  /** SEP-0010 step 2: hand back the wallet-signed challenge, receive a session JWT. */
+  verifyStellarChallenge: (signedTransaction: string) =>
+    request<AuthResponse>('/auth/stellar/verify', {
+      method: 'POST',
+      body: { transaction: signedTransaction },
+    }),
+
   /** The JWT carries only ids; this is how anything human-readable is rendered. */
   getMe: (token: string, signal?: AbortSignal) => request<Me>('/me', { token, signal }),
 
@@ -212,14 +235,20 @@ export const api = {
   getBalances: (token: string, signal?: AbortSignal) =>
     request<Balance[]>('/balance', { token, signal }),
 
-  listTransactions: (token: string, limit = 50, signal?: AbortSignal) =>
-    request<Payment[]>(`/transactions?limit=${limit}`, { token, signal }),
+  /**
+   * The backend paginates by offset, not cursor — there is no `next_cursor`
+   * in the response, just a flat array. Callers infer `hasMore` by comparing
+   * the returned length against `limit`.
+   */
+  listTransactions: (token: string, limit = 50, offset = 0, signal?: AbortSignal) =>
+    request<Payment[]>(`/transactions?limit=${limit}&offset=${offset}`, { token, signal }),
 
   createPaymentRequest: (
     token: string,
     amountStroops: bigint,
     asset?: string,
-    expiresInSecs?: number
+    expiresInSecs?: number,
+    memo?: string
   ) =>
     request<PaymentRequest>('/payment-requests', {
       method: 'POST',
@@ -228,6 +257,7 @@ export const api = {
         amount_stroops: amountStroops,
         ...(asset ? { asset } : {}),
         ...(expiresInSecs ? { expires_in_secs: expiresInSecs } : {}),
+        ...(memo ? { memo } : {}),
       },
     }),
 
@@ -237,6 +267,24 @@ export const api = {
   /** Deliberately public — a customer's wallet reads this without an account. */
   getPaymentRequest: (id: string, signal?: AbortSignal) =>
     request<PaymentRequest>(`/payment-requests/${id}`, { signal }),
+
+  /**
+   * Proxies to Paystack's account resolution API server-side so the Paystack
+   * secret key never touches the browser. Rejects with a 404 ApiError when
+   * the account number/bank code pair doesn't resolve to a real account.
+   */
+  resolveAccount: (
+    token: string,
+    bankCode: string,
+    accountNumber: string,
+    signal?: AbortSignal
+  ) =>
+    request<ResolvedAccount>('/accounts/resolve', {
+      method: 'POST',
+      token,
+      signal,
+      body: { bank_code: bankCode, account_number: accountNumber },
+    }),
 
   createWithdrawal: (
     token: string,
@@ -308,4 +356,11 @@ export const api = {
   /** Re-queues a failed payout without making the user re-enter bank details. */
   retryOfframpOrder: (token: string, orderId: string) =>
     request<OfframpOrder>(`/offramp/orders/${orderId}/retry`, { method: 'POST', token, body: {} }),
+  /** SEP-0024: kicks off the anchor's interactive deposit flow. */
+  startSep24Deposit: (token: string, asset = 'cNGN') =>
+    request<Sep24Interactive>('/sep24/deposit', { method: 'POST', token, body: { asset } }),
+
+  /** SEP-0024: kicks off the anchor's interactive withdrawal flow. */
+  startSep24Withdrawal: (token: string, asset = 'cNGN') =>
+    request<Sep24Interactive>('/sep24/withdraw', { method: 'POST', token, body: { asset } }),
 }
