@@ -33,6 +33,17 @@ function toSession(response: AuthResponse): Session {
   }
 }
 
+function isValidSession(value: unknown): value is Session {
+  if (typeof value !== 'object' || value === null) return false
+  const obj = value as Record<string, unknown>
+  return (
+    typeof obj.token === 'string' &&
+    obj.token.length > 0 &&
+    typeof obj.userId === 'string' &&
+    obj.userId.length > 0
+  )
+}
+
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [ready, setReady] = useState(false)
@@ -40,7 +51,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY)
-      if (stored) setSession(JSON.parse(stored) as Session)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (isValidSession(parsed)) {
+          setSession(parsed)
+        } else {
+          window.localStorage.removeItem(STORAGE_KEY)
+        }
+      }
     } catch {
       window.localStorage.removeItem(STORAGE_KEY)
     }
