@@ -2,6 +2,16 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { api, setUnauthorizedHandler, type AuthResponse, type Session } from '@/lib/api'
+import { api, setUnauthorizedHandler, type AuthResponse } from '@/lib/api'
+import { connectFreighter, signChallengeTransaction } from '@/lib/freighter'
+
+const STORAGE_KEY = 'aframp.session'
+
+interface Session {
+  token: string
+  userId: string
+  merchantId: string | null
+}
 
 interface SessionContextValue {
   session: Session | null
@@ -9,6 +19,8 @@ interface SessionContextValue {
   ready: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<void>
+  /** SEP-0010: connect Freighter, sign the backend's challenge, exchange for a session. */
+  signInWithFreighter: () => Promise<void>
   signOut: () => void
 }
 
@@ -20,6 +32,17 @@ function toSession(response: AuthResponse): Session {
     userId: response.user_id,
     merchantId: response.merchant_id,
   }
+}
+
+function isValidSession(value: unknown): value is Session {
+  if (typeof value !== 'object' || value === null) return false
+  const obj = value as Record<string, unknown>
+  return (
+    typeof obj.token === 'string' &&
+    obj.token.length > 0 &&
+    typeof obj.userId === 'string' &&
+    obj.userId.length > 0
+  )
 }
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -37,6 +60,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         // Session restoration failed, user will need to log in
       }
       setReady(true)
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (isValidSession(parsed)) {
+          setSession(parsed)
+        } else {
+          window.localStorage.removeItem(STORAGE_KEY)
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY)
     }
     restoreSession()
   }, [])
@@ -61,6 +96,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Logout failed, but clear session anyway
     }
+  const signInWithFreighter = useCallback(async () => {
+    const address = await connectFreighter()
+    const challenge = await api.getStellarChallenge(address)
+    const signedTransaction = await signChallengeTransaction(
+      challenge.transaction,
+      challenge.network_passphrase
+    )
+    persist(toSession(await api.verifyStellarChallenge(signedTransaction)))
+  }, [persist])
+
+  const signOut = useCallback(() => {
+    window.localStorage.removeItem(STORAGE_KEY)
     setSession(null)
   }, [])
 
@@ -72,8 +119,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [signOut])
 
   const value = useMemo(
-    () => ({ session, ready, signIn, signUp, signOut }),
-    [session, ready, signIn, signUp, signOut]
+    () => ({ session, ready, signIn, signUp, signInWithFreighter, signOut }),
+    [session, ready, signIn, signUp, signInWithFreighter, signOut]
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
