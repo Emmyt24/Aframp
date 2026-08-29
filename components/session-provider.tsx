@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { api, setUnauthorizedHandler, type AuthResponse, type Session } from '@/lib/api'
 import { api, setUnauthorizedHandler, type AuthResponse } from '@/lib/api'
 import { connectFreighter, signChallengeTransaction } from '@/lib/freighter'
 
@@ -14,7 +15,7 @@ interface Session {
 
 interface SessionContextValue {
   session: Session | null
-  /** False until localStorage has been read — guards against redirecting on first paint. */
+  /** False until session cookie has been validated — guards against redirecting on first paint. */
   ready: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<void>
@@ -49,6 +50,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    async function restoreSession() {
+      try {
+        const result = await api.getSession()
+        if (result.session) {
+          setSession(result.session)
+        }
+      } catch {
+        // Session restoration failed, user will need to log in
+      }
+      setReady(true)
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY)
       if (stored) {
@@ -62,33 +73,29 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     } catch {
       window.localStorage.removeItem(STORAGE_KEY)
     }
-    setReady(true)
-  }, [])
-
-  const persist = useCallback((next: Session) => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-    } catch {
-      // Storage may be unavailable (private mode, quota, blocked) — the
-      // session still works for this tab, it just won't survive a reload.
-    }
-    setSession(next)
+    restoreSession()
   }, [])
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      persist(toSession(await api.login(email, password)))
+      setSession(toSession(await api.login(email, password)))
     },
-    [persist]
+    []
   )
 
   const signUp = useCallback(
     async (email: string, password: string, name: string) => {
-      persist(toSession(await api.signup(email, password, name)))
+      setSession(toSession(await api.signup(email, password, name)))
     },
-    [persist]
+    []
   )
 
+  const signOut = useCallback(async () => {
+    try {
+      await api.logout()
+    } catch {
+      // Logout failed, but clear session anyway
+    }
   const signInWithFreighter = useCallback(async () => {
     const address = await connectFreighter()
     const challenge = await api.getStellarChallenge(address)

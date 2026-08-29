@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { useSession } from '@/components/session-provider'
+import { api, ApiError } from '@/lib/api'
 
 const MIN_PASSWORD_LENGTH = 8
 
@@ -28,14 +29,18 @@ function calculatePasswordStrength(password: string): 'weak' | 'fair' | 'strong'
   return 'weak'
 }
 
-export default function SignupPage() {
-  const { session, ready, signUp } = useSession()
+export default function ResetPasswordPage() {
+  const { session, ready } = useSession()
   const router = useRouter()
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token')
+
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
   const passwordStrength = calculatePasswordStrength(password)
 
   useEffect(() => {
@@ -44,31 +49,73 @@ export default function SignupPage() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    if (submitting) return
     setError(null)
 
-    // Mirrors the server's own check so the error lands next to the field.
+    if (!token) {
+      setError('Invalid or missing reset token')
+      return
+    }
+
     if (password.length < MIN_PASSWORD_LENGTH) {
       setError(`Use at least ${MIN_PASSWORD_LENGTH} characters for your password.`)
       return
     }
 
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
     setSubmitting(true)
     try {
-      await signUp(email, password, name)
-      router.replace('/charge')
+      await api.resetPassword(token, password)
+      setSuccess(true)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not create your account')
+      const message =
+        cause instanceof ApiError && cause.status === 400
+          ? 'Invalid or expired reset token. Please request a new password reset.'
+          : cause instanceof Error
+            ? cause.message
+            : 'Could not reset your password'
+      setError(message)
       setSubmitting(false)
     }
+  }
+
+  if (!token) {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-8 px-6 py-12">
+        <Alert variant="destructive">
+          <AlertDescription>Invalid or missing reset token</AlertDescription>
+        </Alert>
+        <Link href="/forgot-password" className="text-primary font-medium hover:underline">
+          Request a new password reset
+        </Link>
+      </main>
+    )
+  }
+
+  if (success) {
+    return (
+      <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-8 px-6 py-12">
+        <header className="space-y-2">
+          <h1 className="font-display text-3xl font-semibold tracking-tight">Password reset successful</h1>
+          <p className="text-muted-foreground text-sm">Your password has been updated. You can now sign in with your new password.</p>
+        </header>
+
+        <Link href="/login" className="text-primary font-medium hover:underline">
+          Go to sign in
+        </Link>
+      </main>
+    )
   }
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-8 px-6 py-12">
       <header className="space-y-2">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Create your account</h1>
-        <p className="text-muted-foreground text-sm">
-          Takes a minute. You&apos;ll get a payment address straight after.
-        </p>
+        <h1 className="font-display text-3xl font-semibold tracking-tight">Set a new password</h1>
+        <p className="text-muted-foreground text-sm">Choose a strong password to secure your account.</p>
       </header>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -77,29 +124,6 @@ export default function SignupPage() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-
-        <div className="space-y-2">
-          <Label htmlFor="name">Business name</Label>
-          <Input
-            id="name"
-            autoComplete="organization"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -137,20 +161,36 @@ export default function SignupPage() {
               Use at least {MIN_PASSWORD_LENGTH} characters for your password.
             </p>
           )}
-          {password.length === 0 && (
-            <p className="text-muted-foreground text-xs">
-              At least {MIN_PASSWORD_LENGTH} characters.
-            </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirm-password">Confirm password</Label>
+          <Input
+            id="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={MIN_PASSWORD_LENGTH}
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+          />
+          {confirmPassword && password !== confirmPassword && (
+            <p className="text-destructive text-xs">Passwords do not match</p>
           )}
         </div>
 
-        <Button type="submit" size="lg" disabled={submitting} className="mt-2">
-          {submitting ? 'Creating account…' : 'Create account'}
+        <Button
+          type="submit"
+          size="lg"
+          disabled={submitting || password.length < MIN_PASSWORD_LENGTH}
+          className="mt-2"
+        >
+          {submitting ? 'Resetting password…' : 'Reset password'}
         </Button>
       </form>
 
       <p className="text-muted-foreground text-center text-sm">
-        Already have an account?{' '}
+        Remember your password?{' '}
         <Link href="/login" className="text-primary font-medium hover:underline">
           Sign in
         </Link>
