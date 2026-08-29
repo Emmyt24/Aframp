@@ -7,6 +7,9 @@
  * Errors always come back as `{ "error": "message" }`.
  */
 
+import type { KycInitiateRequest, KycInitiateResponse, KycStatusResponse } from '@/types/kyc'
+import type { OfframpFeeBreakdown, OfframpOrder } from '@/types/offramp'
+
 /** Backend ids are UUIDs; aliased for readability, not validated here. */
 type UUID = string
 
@@ -304,6 +307,55 @@ export const api = {
   listWithdrawals: (token: string, limit = 50, signal?: AbortSignal) =>
     request<Withdrawal[]>(`/withdrawals?limit=${limit}`, { token, signal }),
 
+  /** Dedicated status endpoint so the gate can be checked without pulling the full profile. */
+  getKycStatus: (token: string, signal?: AbortSignal) =>
+    request<KycStatusResponse>('/kyc-status', { token, signal }),
+
+  initiateKyc: (token: string, body: KycInitiateRequest) =>
+    request<KycInitiateResponse>('/kyc/initiate', { method: 'POST', token, body }),
+
+  getOfframpRate: (token: string, asset: string, fiatCurrency: string, signal?: AbortSignal) =>
+    request<{ rate: number; lastUpdated: number }>(
+      `/offramp/rate?asset=${asset}&fiat=${fiatCurrency}`,
+      { token, signal }
+    ),
+
+  getOfframpFees: (
+    token: string,
+    asset: string,
+    fiatCurrency: string,
+    amount: number,
+    signal?: AbortSignal
+  ) =>
+    request<OfframpFeeBreakdown>(
+      `/offramp/fees?asset=${asset}&fiat=${fiatCurrency}&amount=${amount}`,
+      { token, signal }
+    ),
+
+  createOfframpOrder: (token: string, assetId: string, amount: number, fiatCurrency: string) =>
+    request<OfframpOrder>('/offramp/orders', {
+      method: 'POST',
+      token,
+      body: { asset_id: assetId, amount, fiat_currency: fiatCurrency },
+    }),
+
+  getOfframpOrder: (token: string, id: string, signal?: AbortSignal) =>
+    request<OfframpOrder>(`/offramp/orders/${id}`, { token, signal }),
+
+  submitOfframpBankDetails: (
+    token: string,
+    orderId: string,
+    details: { bankCode?: string; accountNumber: string }
+  ) =>
+    request<OfframpOrder>(`/offramp/orders/${orderId}/bank-details`, {
+      method: 'POST',
+      token,
+      body: { bank_code: details.bankCode, account_number: details.accountNumber },
+    }),
+
+  /** Re-queues a failed payout without making the user re-enter bank details. */
+  retryOfframpOrder: (token: string, orderId: string) =>
+    request<OfframpOrder>(`/offramp/orders/${orderId}/retry`, { method: 'POST', token, body: {} }),
   /** SEP-0024: kicks off the anchor's interactive deposit flow. */
   startSep24Deposit: (token: string, asset = 'cNGN') =>
     request<Sep24Interactive>('/sep24/deposit', { method: 'POST', token, body: { asset } }),
