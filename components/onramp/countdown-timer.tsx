@@ -9,6 +9,13 @@ interface CountdownTimerProps {
   onExpire?: () => void
 }
 
+/** Below this many seconds remaining, the timer turns amber as a heads-up. */
+const URGENT_THRESHOLD_SECONDS = 60
+
+function secondsUntil(expiresAt: Date): number {
+  return Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000))
+}
+
 export function CountdownTimer({ expiresAt, onExpire }: CountdownTimerProps) {
   const [timeLeft, setTimeLeft] = useState<{ minutes: number; seconds: number }>({
     minutes: 0,
@@ -25,11 +32,18 @@ export function CountdownTimer({ expiresAt, onExpire }: CountdownTimerProps) {
   useEffect(() => {
     const calculateTimeLeft = () => {
       const difference = expiresAtRef.current - Date.now()
+  const [secondsLeft, setSecondsLeft] = useState(() => secondsUntil(expiresAt))
+  const isExpired = secondsLeft <= 0
 
-      if (difference <= 0) {
-        setIsExpired(true)
+  useEffect(() => {
+    setSecondsLeft(secondsUntil(expiresAt))
+
+    const timer = setInterval(() => {
+      const next = secondsUntil(expiresAt)
+      setSecondsLeft(next)
+      if (next <= 0) {
+        clearInterval(timer)
         onExpire?.()
-        return { minutes: 0, seconds: 0 }
       }
 
       return {
@@ -50,7 +64,9 @@ export function CountdownTimer({ expiresAt, onExpire }: CountdownTimerProps) {
     }
   }, [])
 
-  const isUrgent = timeLeft.minutes < 5
+  const isUrgent = !isExpired && secondsLeft < URGENT_THRESHOLD_SECONDS
+  const minutes = Math.floor(secondsLeft / 60)
+  const seconds = secondsLeft % 60
 
   return (
     <div
@@ -68,8 +84,7 @@ export function CountdownTimer({ expiresAt, onExpire }: CountdownTimerProps) {
         <span>Expired</span>
       ) : (
         <span>
-          Expires in {String(timeLeft.minutes).padStart(2, '0')}:
-          {String(timeLeft.seconds).padStart(2, '0')}
+          Expires in {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
         </span>
       )}
     </div>
