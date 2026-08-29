@@ -14,7 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { api, ApiError, type Balance, type Withdrawal, type WithdrawalStatus } from '@/lib/api'
+import {
+  api,
+  ApiError,
+  type Balance,
+  type ResolvedAccount,
+  type Withdrawal,
+  type WithdrawalStatus,
+} from '@/lib/api'
 import { formatStroops, isWholeKobo, parseAmountToStroops } from '@/lib/money'
 import { BANKS } from '@/lib/banks'
 import { useAuthenticatedSession } from '@/components/session-provider'
@@ -25,6 +32,8 @@ const ASSET = 'cNGN'
 const ACCOUNT_NUMBER_LENGTH = 10
 /** Paystack's own floor is NGN 50. */
 const MINIMUM_STROOPS = 500_000_000n
+/** Avoids firing a resolve request on every keystroke while typing the account number. */
+const RESOLVE_DEBOUNCE_MS = 500
 
 const STATUS_LABEL: Record<WithdrawalStatus, string> = {
   pending: 'Pending',
@@ -43,6 +52,9 @@ export default function WithdrawPage() {
   const [accountNumber, setAccountNumber] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [resolvedAccount, setResolvedAccount] = useState<ResolvedAccount | null>(null)
+  const [resolving, setResolving] = useState(false)
+  const [resolveError, setResolveError] = useState<string | null>(null)
 
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -76,6 +88,37 @@ export default function WithdrawPage() {
     }
   }, [load])
 
+  useEffect(() => {
+    setResolvedAccount(null)
+    setResolveError(null)
+
+    if (accountNumber.length !== ACCOUNT_NUMBER_LENGTH || !bankCode) return
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      setResolving(true)
+      api
+        .resolveAccount(token, bankCode, accountNumber, controller.signal)
+        .then(setResolvedAccount)
+        .catch((cause) => {
+          if (cause instanceof DOMException && cause.name === 'AbortError') return
+          setResolveError(
+            cause instanceof ApiError && cause.status === 404
+              ? 'Account not found. Check the number and bank.'
+              : cause instanceof Error
+                ? cause.message
+                : 'Could not verify this account.'
+          )
+        })
+        .finally(() => setResolving(false))
+    }, RESOLVE_DEBOUNCE_MS)
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [token, accountNumber, bankCode])
+
   const available = balances?.find((balance) => balance.asset === ASSET)?.available ?? 0n
   const stroops = parseAmountToStroops(amount)
 
@@ -89,6 +132,7 @@ export default function WithdrawPage() {
     if (accountNumber.length !== ACCOUNT_NUMBER_LENGTH) {
       return `Account numbers are ${ACCOUNT_NUMBER_LENGTH} digits.`
     }
+    if (!resolvedAccount) return 'We could not verify this account yet.'
     return null
   }
 
@@ -200,9 +244,20 @@ export default function WithdrawPage() {
                 )
               }
             />
+            {resolving && <p className="text-dim text-xs">Verifying account…</p>}
+            {resolvedAccount && (
+              <p className="text-xs font-medium text-emerald-500">
+                {resolvedAccount.account_name}
+              </p>
+            )}
+            {resolveError && <p className="text-destructive text-xs">{resolveError}</p>}
           </div>
 
-          <Button type="submit" size="lg" disabled={submitting || available === 0n}>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={submitting || available === 0n || !resolvedAccount}
+          >
             {submitting ? 'Sending…' : 'Cash out'}
           </Button>
         </form>
